@@ -1,7 +1,7 @@
---// FIAT HUB - UI Melhorada
+--// FIAT HUB - UI Ajustada e Arrastável
+
 local Players = game:GetService("Players")
 local player = Players.LocalPlayer
-local mouse = player:GetMouse()
 local CoreGui = game:GetService("CoreGui")
 local UserInputService = game:GetService("UserInputService")
 
@@ -24,11 +24,11 @@ local function createButton(name, parent, text, size, position, color)
     return button
 end
 
--- Criar UI principal (porta deitada maior e estilizada)
+-- UI principal (reduzida 20%)
 local mainFrame = Instance.new("Frame")
 mainFrame.Name = "MainFrame"
-mainFrame.Size = UDim2.new(0, 900, 0, 450) -- um pouco maior
-mainFrame.Position = UDim2.new(0.05,0,0.05,0)
+mainFrame.Size = UDim2.new(0, 720, 0, 360) -- 20% menor
+mainFrame.Position = UDim2.new(0.1,0,0.1,0)
 mainFrame.BackgroundColor3 = Color3.fromRGB(35,35,35)
 mainFrame.BorderSizePixel = 0
 mainFrame.Parent = screenGui
@@ -42,7 +42,7 @@ topBar.BackgroundColor3 = Color3.fromRGB(25,25,25)
 topBar.BorderSizePixel = 0
 topBar.Parent = mainFrame
 
--- Sistema de arrastar pela TopBar
+-- Sistema de arrastar a UI
 local dragging, dragInput, dragStart, startPos
 local function update(input)
     local delta = input.Position - dragStart
@@ -75,11 +75,11 @@ UserInputService.InputChanged:Connect(function(input)
 end)
 
 -- Botões minimizar e fechar
-local minimizeButton = createButton("MinimizeButton", topBar, "-", UDim2.new(0,20,0,20), UDim2.new(0,5,0,5), Color3.fromRGB(80,80,80))
-local closeButton = createButton("CloseButton", topBar, "x", UDim2.new(0,20,0,20), UDim2.new(1,-25,0,5), Color3.fromRGB(180,50,50))
+local minimizeButton = createButton("MinimizeButton", topBar, "-", UDim2.new(0,18,0,18), UDim2.new(0,5,0,5), Color3.fromRGB(80,80,80))
+local closeButton = createButton("CloseButton", topBar, "x", UDim2.new(0,18,0,18), UDim2.new(1,-23,0,5), Color3.fromRGB(180,50,50))
 
 -- Bola com F para restaurar UI
-local restoreButton = createButton("RestoreButton", screenGui, "F", UDim2.new(0, 30, 0, 30), UDim2.new(0,5,0,5), Color3.fromRGB(50,50,50))
+local restoreButton = createButton("RestoreButton", screenGui, "F", UDim2.new(0,28,0,28), UDim2.new(0,5,0,5), Color3.fromRGB(50,50,50))
 restoreButton.Visible = false
 
 -- Funções de minimizar, restaurar e fechar
@@ -96,24 +96,23 @@ closeButton.MouseButton1Click:Connect(function()
     restoreButton:Destroy()
 end)
 
--- Ícones laterais
-local discordIcon = createButton("DiscordIcon", mainFrame, "🌟", UDim2.new(0,25,0,25), UDim2.new(0,10,0,50), Color3.fromRGB(70,70,70))
--- você pode adicionar mais ícones facilmente
+-- Ícone lateral (Discord)
+local discordIcon = createButton("DiscordIcon", mainFrame, "🌟", UDim2.new(0,22,0,22), UDim2.new(0,10,0,50), Color3.fromRGB(70,70,70))
 
--- Funções (parte inferior da UI)
+-- Frame de funções na parte inferior da UI
 local functionsFrame = Instance.new("Frame")
 functionsFrame.Name = "FunctionsFrame"
-functionsFrame.Size = UDim2.new(0, mainFrame.Size.X.Offset - 20, 0, 180)
-functionsFrame.Position = UDim2.new(0,10,1,-190)
+functionsFrame.Size = UDim2.new(0, mainFrame.Size.X.Offset - 20, 0, 150)
+functionsFrame.Position = UDim2.new(0,10,1,-160)
 functionsFrame.BackgroundColor3 = Color3.fromRGB(50,50,50)
 functionsFrame.BorderSizePixel = 0
 functionsFrame.Visible = false
 functionsFrame.Parent = mainFrame
 
--- Botões de funções menores
-local getDiscordButton = createButton("GetDiscordButton", functionsFrame, "Get Discord Link", UDim2.new(0, 150, 0, 25), UDim2.new(0.5,-75,0,60), Color3.fromRGB(90,90,90))
+-- Botão de função menor
+local getDiscordButton = createButton("GetDiscordButton", functionsFrame, "Get Discord Link", UDim2.new(0,130,0,22), UDim2.new(0.5,-65,0,60), Color3.fromRGB(90,90,90))
 
--- Função de copiar link para área de transferência
+-- Copiar link para área de transferência
 getDiscordButton.MouseButton1Click:Connect(function()
     setclipboard("https://discord.gg/CP2JYKNk")
 end)
