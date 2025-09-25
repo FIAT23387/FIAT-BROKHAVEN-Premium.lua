@@ -258,12 +258,56 @@ createToggle("Kill Ônibus", function(state)
                 local humanoid = LocalPlayer.Character.Humanoid
                 if humanoid.SeatPart == nil then
                     -- Mostrar tela cinza 4s "Sente em um carro"
-                else
-                    -- Teleportar até player selecionado, rodar, void, desequipar tool
-                end
+        
+                -- KILL ÔNIBUS COM PLAYER SENTADO
+createToggle("Kill Ônibus", function(state)
+    killOnibusEnabled = state
+    if killOnibusEnabled then
+        killConnection = RunService.Heartbeat:Connect(function()
+            local character = LocalPlayer.Character
+            if not character or not character:FindFirstChild("Humanoid") then return end
+            local humanoid = character.Humanoid
+            local hrp = character:FindFirstChild("HumanoidRootPart")
+            if not hrp then return end
+
+            if not selectedPlayer or not selectedPlayer.Character or not selectedPlayer.Character:FindFirstChild("Humanoid") then return end
+            local targetHumanoid = selectedPlayer.Character.Humanoid
+            local targetHRP = selectedPlayer.Character:FindFirstChild("HumanoidRootPart")
+
+            if not targetHumanoid.SeatPart then
+                local aviso = Instance.new("TextLabel", ScreenGui)
+                aviso.Size = UDim2.new(0, 300, 0, 50)
+                aviso.Position = UDim2.new(0.5, -150, 0.5, -25)
+                aviso.BackgroundColor3 = Color3.fromRGB(80,80,80)
+                aviso.BackgroundTransparency = 0.2
+                aviso.TextColor3 = Color3.fromRGB(255,255,255)
+                aviso.Text = "Sente em um carro"
+                aviso.Font = Enum.Font.SourceSansBold
+                aviso.TextSize = 18
+                aviso.TextScaled = true
+                Instance.new("UICorner", aviso).CornerRadius = UDim.new(0,8)
+                delay(4, function() aviso:Destroy() end)
+                return
             end
+
+            local originalPos = hrp.Position
+            hrp.CFrame = targetHRP.CFrame * CFrame.new(0, -5, 0)
+
+            local heartbeatConn
+            heartbeatConn = RunService.Heartbeat:Connect(function()
+                if targetHumanoid.SeatPart then
+                    hrp.CFrame = targetHRP.CFrame * CFrame.new(0, -5, 0) * CFrame.Angles(0, tick()%360, 0)
+                else
+                    heartbeatConn:Disconnect()
+                    hrp.CFrame = CFrame.new(originalPos.X, -500, originalPos.Z)
+                    humanoid.Jump = true
+                    hrp.CFrame = CFrame.new(originalPos)
+                    if killConnection then killConnection:Disconnect() killConnection=nil end
+                end
+            end)
         end)
+    else
+        if killConnection then killConnection:Disconnect() killConnection=nil end
     end
 end)
-
--- PONHA RESTO AQUI
+                            
