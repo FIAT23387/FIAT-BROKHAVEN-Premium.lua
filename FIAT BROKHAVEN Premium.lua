@@ -219,5 +219,119 @@ end)
 Players.PlayerAdded:Connect(updatePlayerList)
 Players.PlayerRemoving:Connect(updatePlayerList)
 
--- coloque o resto do código aqui
+
+
+local ButtonHolder = MainFrame:FindFirstChild("ButtonHolder") or ButtonHolder -- usando ButtonHolder da Etapa 1
+local player = game.Players.LocalPlayer
+
+-- Função criar Toggle Switch
+local function createToggle(name, parent, callback)
+    local Frame = Instance.new("Frame")
+    Frame.Size = UDim2.new(1, -20, 0, 40)
+    Frame.BackgroundTransparency = 1
+    Frame.Parent = parent
+
+    local Label = Instance.new("TextLabel")
+    Label.Text = name
+    Label.Size = UDim2.new(0.7, 0, 1, 0)
+    Label.BackgroundTransparency = 1
+    Label.TextColor3 = Color3.fromRGB(255, 255, 255)
+    Label.TextSize = 16
+    Label.Font = Enum.Font.Gotham
+    Label.TextXAlignment = Enum.TextXAlignment.Left
+    Label.Parent = Frame
+
+    local Toggle = Instance.new("Frame")
+    Toggle.Size = UDim2.new(0, 50, 0, 22)
+    Toggle.Position = UDim2.new(1, -60, 0.5, -11)
+    Toggle.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
+    Toggle.Parent = Frame
+
+    local Corner = Instance.new("UICorner")
+    Corner.CornerRadius = UDim.new(1, 0)
+    Corner.Parent = Toggle
+
+    local Circle = Instance.new("Frame")
+    Circle.Size = UDim2.new(0, 20, 0, 20)
+    Circle.Position = UDim2.new(0, 1, 0.5, -10)
+    Circle.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    Circle.Parent = Toggle
+
+    local CircleCorner = Instance.new("UICorner")
+    CircleCorner.CornerRadius = UDim.new(1, 0)
+    CircleCorner.Parent = Circle
+
+    local enabled = false
+    Toggle.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            enabled = not enabled
+            if enabled then
+                Circle:TweenPosition(UDim2.new(1, -21, 0.5, -10), "Out", "Quad", 0.2, true)
+                Toggle.BackgroundColor3 = Color3.fromRGB(0, 170, 255)
+            else
+                Circle:TweenPosition(UDim2.new(0, 1, 0.5, -10), "Out", "Quad", 0.2, true)
+                Toggle.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
+            end
+            callback(enabled)
+        end
+    end)
+end
+
+-- Função Lag Tool Mão
+local lagActive = false
+createToggle("🔥 Lag Tool Mão", ButtonHolder, function(state)
+    lagActive = state
+    if state then
+        local char = player.Character
+        if not char then return end
+        local humanoid = char:FindFirstChildOfClass("Humanoid")
+        if not humanoid then return end
+        local tool = char:FindFirstChildOfClass("Tool")
+        if not tool then
+            warn("[LagTool] Nenhum Tool equipado na mão.")
+            return
+        end
+
+        local backpack = player:FindFirstChildOfClass("Backpack")
+        if not backpack then
+            warn("[LagTool] Backpack não encontrado.")
+            return
+        end
+
+        local containerFolder = Instance.new("Folder")
+        containerFolder.Name = "FIAT_LagTools"
+        containerFolder.Parent = backpack
+
+        spawn(function()
+            local clones = {}
+            for i = 1, 200 do
+                if not lagActive then break end
+                local ok, clone = pcall(function() return tool:Clone() end)
+                if ok and clone then
+                    clone.Name = tool.Name .. "_Lag_" .. i
+                    clone.Parent = containerFolder
+                    table.insert(clones, clone)
+                    for _, obj in ipairs(clone:GetDescendants()) do
+                        if obj:IsA("PointLight") or obj:IsA("SpotLight") or obj:IsA("SurfaceLight") then
+                            obj:Destroy()
+                        end
+                    end
+                end
+                if i % 20 == 0 then wait(0.05) end
+            end
+
+            -- equipa todos
+            for _, c in ipairs(containerFolder:GetChildren()) do
+                if not lagActive then break end
+                pcall(function() humanoid:EquipTool(c) end)
+                wait(0.02)
+            end
+
+            print("[LagTool] Criado e equipado " .. #containerFolder:GetChildren() .. " Tools.")
+        end)
+    end
+end)
+
+--// coloque o resto do código aqui //--
+
 
