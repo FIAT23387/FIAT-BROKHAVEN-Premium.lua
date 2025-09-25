@@ -106,4 +106,118 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
     end
 end)
 
---// Lugar para futuras atualizações
+-- UI Player Selector (Etapa 1)
+
+local Players = game:GetService("Players")
+local player = Players.LocalPlayer
+
+-- cria ScreenGui
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "FIAT_UI"
+screenGui.ResetOnSpawn = false
+screenGui.Parent = player:WaitForChild("PlayerGui")
+
+-- cria main frame
+local mainFrame = Instance.new("Frame")
+mainFrame.Size = UDim2.new(0, 400, 0, 250)
+mainFrame.Position = UDim2.new(0.5, -200, 0.5, -125)
+mainFrame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+mainFrame.BackgroundTransparency = 0.2
+mainFrame.Active = true
+mainFrame.Draggable = true
+mainFrame.Parent = screenGui
+
+local uiCorner = Instance.new("UICorner", mainFrame)
+uiCorner.CornerRadius = UDim.new(0, 10)
+
+-- título
+local title = Instance.new("TextLabel")
+title.Size = UDim2.new(1, 0, 0, 30)
+title.BackgroundTransparency = 1
+title.Text = "FIAT HUB - Selecionar Player"
+title.Font = Enum.Font.SourceSansBold
+title.TextColor3 = Color3.fromRGB(255, 255, 255)
+title.TextSize = 18
+title.Parent = mainFrame
+
+-- botão Selecionar Player
+local selectButton = Instance.new("TextButton")
+selectButton.Size = UDim2.new(0, 150, 0, 30)
+selectButton.Position = UDim2.new(0, 10, 0, 40)
+selectButton.Text = "Selecionar Player"
+selectButton.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
+selectButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+selectButton.Font = Enum.Font.SourceSans
+selectButton.TextSize = 16
+selectButton.Parent = mainFrame
+
+local btnCorner = Instance.new("UICorner", selectButton)
+btnCorner.CornerRadius = UDim.new(0, 6)
+
+-- frame da lista de players
+local playerListFrame = Instance.new("Frame")
+playerListFrame.Size = UDim2.new(0, 200, 0, 150)
+playerListFrame.Position = UDim2.new(0, 10, 0, 80)
+playerListFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+playerListFrame.Visible = false
+playerListFrame.Parent = mainFrame
+
+local listCorner = Instance.new("UICorner", playerListFrame)
+listCorner.CornerRadius = UDim.new(0, 6)
+
+-- scrolling para lista
+local scrolling = Instance.new("ScrollingFrame")
+scrolling.Size = UDim2.new(1, 0, 1, 0)
+scrolling.CanvasSize = UDim2.new(0, 0, 0, 0)
+scrolling.BackgroundTransparency = 1
+scrolling.ScrollBarThickness = 6
+scrolling.Parent = playerListFrame
+
+-- variável para armazenar player selecionado
+local selectedPlayer = nil
+
+-- função para atualizar lista de players
+local function updatePlayerList()
+    scrolling:ClearAllChildren()
+    local y = 0
+    for _, plr in ipairs(Players:GetPlayers()) do
+        if plr ~= player then
+            local btn = Instance.new("TextButton")
+            btn.Size = UDim2.new(1, -6, 0, 25)
+            btn.Position = UDim2.new(0, 3, 0, y)
+            btn.Text = plr.Name
+            btn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+            btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+            btn.Font = Enum.Font.SourceSans
+            btn.TextSize = 16
+            btn.Parent = scrolling
+
+            local corner = Instance.new("UICorner", btn)
+            corner.CornerRadius = UDim.new(0, 5)
+
+            btn.MouseButton1Click:Connect(function()
+                selectedPlayer = plr
+                print("Selecionado: " .. plr.Name)
+                playerListFrame.Visible = false
+            end)
+
+            y = y + 30
+        end
+    end
+    scrolling.CanvasSize = UDim2.new(0, 0, 0, y)
+end
+
+-- toggle da lista
+selectButton.MouseButton1Click:Connect(function()
+    playerListFrame.Visible = not playerListFrame.Visible
+    if playerListFrame.Visible then
+        updatePlayerList()
+    end
+end)
+
+-- atualizar quando players entram/saem
+Players.PlayerAdded:Connect(updatePlayerList)
+Players.PlayerRemoving:Connect(updatePlayerList)
+
+-- coloque o resto do código aqui
+
