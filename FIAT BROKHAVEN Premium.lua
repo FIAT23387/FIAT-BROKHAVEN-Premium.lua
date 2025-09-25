@@ -332,6 +332,52 @@ createToggle("🔥 Lag Tool Mão", ButtonHolder, function(state)
     end
 end)
 
---// coloque o resto do código aqui //--
+--// Etapa 3 - Teleport debaixo do player selecionado //--
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local player = Players.LocalPlayer
+
+-- Referência ao player selecionado (definido na Etapa 1/2)
+-- Substitua "selectedPlayer" com a variável do seu toggle/seletor
+local selectedPlayer = player:FindFirstChild("SelectedPlayer") -- ou set manualmente
+
+-- Verifica se existe o toggle Lag Tool Mão
+local lagToggle = player:FindFirstChild("LagToolActive") -- true/false
+
+if not selectedPlayer then
+    warn("Nenhum player selecionado!")
+    return
+end
+
+local function followPlayer()
+    local char = player.Character
+    if not char then return end
+    local hrp = char:FindFirstChild("HumanoidRootPart")
+    if not hrp then return end
+
+    local targetChar = selectedPlayer.Character
+    if not targetChar then return end
+    local targetHRP = targetChar:FindFirstChild("HumanoidRootPart")
+    if not targetHRP then return end
+
+    -- Loop de follow
+    RunService.RenderStepped:Connect(function()
+        if lagToggle and lagToggle.Value and hrp and targetHRP then
+            -- Teleportar embaixo
+            hrp.CFrame = targetHRP.CFrame * CFrame.new(0, -5, 0)
+            -- Deixar de cabeça para baixo
+            local humanoid = char:FindFirstChildOfClass("Humanoid")
+            if humanoid then
+                humanoid.RootPart.Orientation = Vector3.new(180, 0, 0)
+            end
+        end
+    end)
+end
+
+followPlayer()
+
+--// PONHA O RESTO DO CÓDIGO AQUI //--
+
 
 
