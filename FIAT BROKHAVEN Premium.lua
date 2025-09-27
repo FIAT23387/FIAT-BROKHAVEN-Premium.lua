@@ -28,11 +28,11 @@ end
 local Settings = _ENV.rz_settings or {} do
 	_ENV.rz_settings = Settings;
 	
-	Settings.SelectedTool = "Combat";
+	
 	Settings.TweenSpeed = 150;
 	Settings.SmoothMode = false;
-	Settings.BringDistance = 150;
-	Settings.FarmDistance = 12;
+	
+	
 end
 
 if type(fetcher) ~= "table" and isfile and isfile("redz-http-fetcher.lua") and readfile then
@@ -536,13 +536,13 @@ do
 end
 
 do
-	local Logo1 = "rbxassetid://15298567397";
-	local Logo2 = "rbxassetid://17382040552";
+	local Logo1 = "rbxassetid://119584522141804";
+	local Logo2 = "rbxassetid://119584522141804";
 	
-	local Name = "redz Hub : Vox Seas";
-	local Folder = "redzHub-VoxSeas.json";
-	local Credits = "by real_redz";
-	local DiscordInvite = "https://discord.gg/7aR7kNVt4g";
+	local Name = "fiat hub BROKHAVEN";
+	local Folder = "kk";
+	local Credits = "by fiat gordin lorenzo";
+	local DiscordInvite = "";
 	
 	local Window = Library:MakeWindow({Name, Credits, Folder});
 	local LeftControl = Enum.KeyCode.LeftControl;
