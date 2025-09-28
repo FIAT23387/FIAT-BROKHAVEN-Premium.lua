@@ -1,4 +1,4 @@
---// Fiat Hub Ultra Cinema Final
+--// Fiat Hub Ultra Cinema - Versão Final Completa
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
@@ -107,30 +107,30 @@ for i,icon in pairs(Icons) do
     table.insert(IconButtons,btn)
 end
 
--- Mid Buttons Frame
-local MidButtonFrame = Instance.new("Frame")
-MidButtonFrame.Size = UDim2.new(1,-70,1,-70)
-MidButtonFrame.Position = UDim2.new(0,60,0,60)
-MidButtonFrame.BackgroundTransparency = 1
-MidButtonFrame.Parent = MainFrame
+-- Mid Buttons Frame com Scroll
+local MidScroll = Instance.new("ScrollingFrame")
+MidScroll.Size = UDim2.new(1,-70,1,-70)
+MidScroll.Position = UDim2.new(0,60,0,60)
+MidScroll.BackgroundTransparency = 1
+MidScroll.CanvasSize = UDim2.new(0,0,0,0)
+MidScroll.ScrollBarThickness = 8
+MidScroll.Parent = MainFrame
 
-local function ClearMidButtons()
-    for _,v in pairs(MidButtonFrame:GetChildren()) do
-        v:Destroy()
-    end
-end
+local MidUIList = Instance.new("UIListLayout")
+MidUIList.Parent = MidScroll
+MidUIList.SortOrder = Enum.SortOrder.LayoutOrder
+MidUIList.Padding = UDim.new(0,5)
 
 -- Função criar botão simples com feedback
 local ActiveFunctions = {}
 local function CreateButton(name,callback)
     local btn = Instance.new("TextButton")
-    btn.Size = UDim2.new(0,200,0,40)
-    btn.Position = UDim2.new(0,10,0,#MidButtonFrame:GetChildren()*50+10)
+    btn.Size = UDim2.new(1,0,0,40)
     btn.Text = name
     btn.Font = Enum.Font.SourceSansBold
     btn.TextScaled = true
     btn.BackgroundColor3 = Color3.fromRGB(180,180,180)
-    btn.Parent = MidButtonFrame
+    btn.Parent = MidScroll
 
     local active = false
     btn.MouseButton1Click:Connect(function()
@@ -145,24 +145,9 @@ local function CreateButton(name,callback)
             print(name.." desligado")
         end
     end)
+    -- Atualiza CanvasSize
+    MidScroll.CanvasSize = UDim2.new(0,0,0,MidUIList.AbsoluteContentSize.Y + 10)
 end
-
--- Botão Parar Tudo
-local StopButton = Instance.new("TextButton")
-StopButton.Size = UDim2.new(0,100,0,30)
-StopButton.Position = UDim2.new(1,-110,0,350)
-StopButton.Text = "Parar Tudo"
-StopButton.Font = Enum.Font.SourceSansBold
-StopButton.TextScaled = true
-StopButton.BackgroundColor3 = Color3.fromRGB(255,50,50)
-StopButton.Parent = MainFrame
-StopButton.MouseButton1Click:Connect(function()
-    for name,func in pairs(ActiveFunctions) do
-        print("Parando "..name)
-    end
-    ActiveFunctions = {}
-    ClearMidButtons()
-end)
 
 -- Aba transparente de players
 local SelectedPlayer = nil
@@ -193,7 +178,6 @@ local function RefreshPlayerList()
         end
     end
 end
-
 Players.PlayerAdded:Connect(RefreshPlayerList)
 Players.PlayerRemoving:Connect(RefreshPlayerList)
 RefreshPlayerList()
@@ -213,39 +197,87 @@ end
 -- Funções dos ícones
 local IconFunctions = {
     ["🏠"] = function()
-        ClearMidButtons()
+        MidScroll:ClearAllChildren()
         CreateButton("Selecionar Player",RefreshPlayerList)
         CreateButton("Espiar Player",EspiarPlayer)
     end,
     ["⚙️"] = function()
-        ClearMidButtons()
+        MidScroll:ClearAllChildren()
         CreateButton("UI Colorida",function()
             MainFrame.BackgroundColor3 = Color3.fromHSV(tick()%1,1,1)
         end)
+        CreateButton("Parar Tudo",function()
+            for name,func in pairs(ActiveFunctions) do
+                print("Parando "..name)
+            end
+            ActiveFunctions = {}
+            MidScroll:ClearAllChildren()
+        end)
     end,
     ["😈"] = function()
-        ClearMidButtons()
+        MidScroll:ClearAllChildren()
         CreateButton("Kill Ônibus",function() print("a lógica Kill Ônibus") end)
         CreateButton("Kill Sofa",function() print("a lógica Kill Sofa") end)
     end,
     ["💥"] = function()
-        ClearMidButtons()
+        MidScroll:ClearAllChildren()
         CreateButton("Fling Ônibus",function() print("a lógica Fling Ônibus") end)
         CreateButton("Fling Sofa",function() print("a lógica Fling Sofa") end)
     end,
     ["⏱️"] = function()
-        ClearMidButtons()
+        MidScroll:ClearAllChildren()
         CreateButton("Almentar Speed",function() Player.Character.Humanoid.WalkSpeed = 130 end)
         CreateButton("Teleport Tool",function() print("a lógica Teleport Tool") end)
     end,
     ["🌟"] = function()
-        ClearMidButtons()
-        CreateButton("Anti Lag",function() print("a lógica Anti Lag") end)
-        CreateButton("Anti Colisão",function() print("a lógica Anti Colisão") end)
-        CreateButton("Anti Sit",function() print("a lógica Anti Sit") end)
+        MidScroll:ClearAllChildren()
+        CreateButton("Anti Lag",function()
+            if not RunService:FindFirstChild("AntiLagLoop") then
+                local loop = Instance.new("BindableEvent")
+                loop.Name = "AntiLagLoop"
+                loop.Parent = RunService
+                loop.Event:Connect(function()
+                    for _,obj in pairs(workspace:GetDescendants()) do
+                        if obj:IsA("PointLight") or obj:IsA("SurfaceLight") or obj:IsA("SpotLight") then
+                            obj:Destroy()
+                        end
+                    end
+                end)
+                RunService:BindToRenderStep("AntiLagStep",300,function() loop:Fire() end)
+            end
+        end)
+        CreateButton("Anti Colisão",function()
+            if not RunService:FindFirstChild("AntiCollideLoop") then
+                local loop = Instance.new("BindableEvent")
+                loop.Name = "AntiCollideLoop"
+                loop.Parent = RunService
+                loop.Event:Connect(function()
+                    for _,obj in pairs(workspace:GetDescendants()) do
+                        if obj:IsA("BasePart") and obj.Name~="HumanoidRootPart" and obj.Parent~=Player.Character then
+                            obj.CanCollide=false
+                        end
+                    end
+                    for _,tool in pairs(Player.Backpack:GetChildren()) do
+                        if tool:IsA("Tool") and tool:FindFirstChild("Handle") then
+                            tool.Handle.CanCollide=false
+                        end
+                    end
+                end)
+                RunService:BindToRenderStep("AntiCollideStep",301,function() loop:Fire() end)
+            end
+        end)
+        CreateButton("Anti Sit",function()
+            if Player.Character and Player.Character:FindFirstChild("Humanoid") then
+                Player.Character.Humanoid:GetPropertyChangedSignal("Sit"):Connect(function()
+                    if Player.Character.Humanoid.Sit then
+                        Player.Character.Humanoid.Sit=false
+                    end
+                end)
+            end
+        end)
     end,
     ["🤯"] = function()
-        ClearMidButtons()
+        MidScroll:ClearAllChildren()
         CreateButton("Lag Lanterna",function() print("a lógica Lag Lanterna") end)
     end
 }
