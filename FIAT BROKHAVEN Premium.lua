@@ -1,8 +1,8 @@
---// Fiat Hub Organizado - Todos Botões Visíveis e TeleportTool
+-- Fiat Hub Cinema Final
 
 local Players = game:GetService("Players")
-local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
 local Player = Players.LocalPlayer
 local Mouse = Player:GetMouse()
@@ -30,11 +30,9 @@ MainFrame.Active = true
 MainFrame.Draggable = true
 MainFrame.ClipsDescendants = true
 MainFrame.Parent = ScreenGui
+Instance.new("UICorner",MainFrame).CornerRadius = UDim.new(0,20)
 
-local UICornerMain = Instance.new("UICorner")
-UICornerMain.CornerRadius = UDim.new(0,20)
-UICornerMain.Parent = MainFrame
-
+-- Abrir UI animada
 TweenService:Create(MainFrame,TweenInfo.new(0.5,Enum.EasingStyle.Quad,Enum.EasingDirection.Out),{Size=UDim2.new(0,650,0,400)}):Play()
 
 -- Title
@@ -79,7 +77,7 @@ UserInputService.InputBegan:Connect(function(input,gpe)
     end
 end)
 
--- Frame lateral ícones
+-- Icon Frame
 local IconFrame = Instance.new("Frame")
 IconFrame.Size = UDim2.new(0,50,1,0)
 IconFrame.Position = UDim2.new(0,0,0,0)
@@ -101,13 +99,13 @@ for i,icon in pairs(Icons) do
     table.insert(IconButtons,btn)
 end
 
--- Mid Buttons Frame com Scroll
+-- Mid Scroll
 local MidScroll = Instance.new("ScrollingFrame")
 MidScroll.Size = UDim2.new(1,-70,1,-70)
 MidScroll.Position = UDim2.new(0,60,0,60)
 MidScroll.BackgroundTransparency = 1
-MidScroll.CanvasSize = UDim2.new(0,0,0,0)
 MidScroll.ScrollBarThickness = 8
+MidScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
 MidScroll.Parent = MainFrame
 
 local MidUIList = Instance.new("UIListLayout")
@@ -115,7 +113,7 @@ MidUIList.Parent = MidScroll
 MidUIList.SortOrder = Enum.SortOrder.LayoutOrder
 MidUIList.Padding = UDim.new(0,5)
 
--- Criar botão
+-- Funções toggle
 local ActiveFunctions = {}
 local function CreateButton(name,callback)
     local btn = Instance.new("TextButton")
@@ -138,36 +136,43 @@ local function CreateButton(name,callback)
             ActiveFunctions[name] = nil
         end
     end)
-    MidScroll.CanvasSize = UDim2.new(0,0,0,MidUIList.AbsoluteContentSize.Y + 10)
 end
 
 -- Aba de players
 local SelectedPlayer = nil
-local PlayerFrame = Instance.new("Frame")
+local PlayerFrame = Instance.new("ScrollingFrame")
 PlayerFrame.Size = UDim2.new(1,-70,0,120)
 PlayerFrame.Position = UDim2.new(0,60,0,280)
 PlayerFrame.BackgroundTransparency = 0.7
 PlayerFrame.BackgroundColor3 = Color3.fromRGB(50,50,50)
+PlayerFrame.CanvasSize = UDim2.new(0,0,0,0)
+PlayerFrame.ScrollBarThickness = 6
 PlayerFrame.Parent = MainFrame
 
+local PlayerListLayout = Instance.new("UIListLayout")
+PlayerListLayout.Parent = PlayerFrame
+PlayerListLayout.SortOrder = Enum.SortOrder.LayoutOrder
+PlayerListLayout.Padding = UDim.new(0,5)
+
 local function RefreshPlayerList()
-    for _,v in pairs(PlayerFrame:GetChildren()) do v:Destroy() end
-    local y = 10
+    for _,v in pairs(PlayerFrame:GetChildren()) do
+        if v:IsA("TextButton") then v:Destroy() end
+    end
     for _,plr in pairs(Players:GetPlayers()) do
         if plr ~= Player then
             local b = Instance.new("TextButton")
-            b.Size = UDim2.new(1,-20,0,30)
-            b.Position = UDim2.new(0,10,0,y)
+            b.Size = UDim2.new(1,-10,0,30)
             b.Text = plr.Name
             b.Font = Enum.Font.SourceSans
             b.TextScaled = true
+            b.BackgroundColor3 = Color3.fromRGB(150,150,150)
             b.Parent = PlayerFrame
             b.MouseButton1Click:Connect(function()
                 SelectedPlayer = plr
             end)
-            y = y + 35
         end
     end
+    PlayerFrame.CanvasSize = UDim2.new(0,0,0,PlayerListLayout.AbsoluteContentSize.Y + 10)
 end
 Players.PlayerAdded:Connect(RefreshPlayerList)
 Players.PlayerRemoving:Connect(RefreshPlayerList)
@@ -175,13 +180,11 @@ RefreshPlayerList()
 
 -- Espiar Player
 local function EspiarPlayer()
+    RunService:UnbindFromRenderStep("EspiarPlayer")
     if SelectedPlayer and SelectedPlayer.Character and SelectedPlayer.Character:FindFirstChild("Humanoid") then
         RunService:BindToRenderStep("EspiarPlayer",301,function()
             Camera.CameraSubject = SelectedPlayer.Character.Humanoid
         end)
-    else
-        RunService:UnbindFromRenderStep("EspiarPlayer")
-        Camera.CameraSubject = Player.Character and Player.Character:FindFirstChild("Humanoid") or nil
     end
 end
 
@@ -199,6 +202,12 @@ local function CreateTeleportTool()
     end)
 end
 
+-- Limpar todas funções
+local function PararTudo()
+    ActiveFunctions = {}
+    MidScroll:ClearAllChildren()
+end
+
 -- Funções dos ícones
 local IconFunctions = {
     ["🏠"] = function()
@@ -211,20 +220,17 @@ local IconFunctions = {
         CreateButton("UI Colorida",function()
             MainFrame.BackgroundColor3 = Color3.fromHSV(tick()%1,1,1)
         end)
-        CreateButton("Parar Tudo",function()
-            ActiveFunctions = {}
-            MidScroll:ClearAllChildren()
-        end)
+        CreateButton("Parar Tudo",PararTudo)
     end,
     ["😈"] = function()
         MidScroll:ClearAllChildren()
-        CreateButton("Kill Ônibus",function() print("Kill Ônibus lógica") end)
-        CreateButton("Kill Sofa",function() print("Kill Sofa lógica") end)
+        CreateButton("Kill Ônibus",function() print("Kill Ônibus") end)
+        CreateButton("Kill Sofa",function() print("Kill Sofa") end)
     end,
     ["💥"] = function()
         MidScroll:ClearAllChildren()
-        CreateButton("Fling Ônibus",function() print("Fling Ônibus lógica") end)
-        CreateButton("Fling Sofa",function() print("Fling Sofa lógica") end)
+        CreateButton("Fling Ônibus",function() print("Fling Ônibus") end)
+        CreateButton("Fling Sofa",function() print("Fling Sofa") end)
     end,
     ["⏱️"] = function()
         MidScroll:ClearAllChildren()
@@ -261,7 +267,7 @@ local IconFunctions = {
     end,
     ["🤯"] = function()
         MidScroll:ClearAllChildren()
-        CreateButton("Lag Lanterna",function() print("Lag Lanterna lógica") end)
+        CreateButton("Lag Lanterna",function() print("Lag Lanterna") end)
     end
 }
 
