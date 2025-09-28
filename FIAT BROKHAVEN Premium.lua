@@ -1,24 +1,43 @@
--- Fiat Hub UI - Updated (Select Player & Spectate + fixes)
--- Single-file LocalScript for client (CoreGui/PlayerGui). Copy-paste pronto para colar.
+-- Fiat Hub UI - Final Update (UI visibility fix, persistent spectate camera, button test placeholders)
+-- Copy-paste this single LocalScript into a client script (PlayerGui/CoreGui). Ready to colar.
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
-local CoreGui = (gethui and gethui()) or game:GetService("CoreGui")
 local Camera = workspace.CurrentCamera
+
+local LocalPlayer = Players.LocalPlayer
+
+-- Try to parent ScreenGui to CoreGui (exploits) otherwise fallback to PlayerGui
+local function GetGuiParent()
+    local ok, gui
+    -- try coregui/gethui
+    if (gethui and gethui()) then
+        pcall(function() gui = gethui() end)
+        if gui then return gui end
+    end
+    -- try CoreGui
+    local success, cg = pcall(function() return game:GetService("CoreGui") end)
+    if success and cg then return cg end
+    -- fallback to PlayerGui
+    return LocalPlayer:WaitForChild("PlayerGui")
+end
+
+local GuiParent = GetGuiParent()
 
 -- ScreenGui
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "FiatHub_UI"
 ScreenGui.ResetOnSpawn = false
-ScreenGui.Parent = CoreGui
+ScreenGui.Enabled = true
+ScreenGui.Parent = GuiParent
 
 -- Main window
 local Window = Instance.new("Frame")
 Window.Name = "Window"
-Window.Size = UDim2.new(0, 600, 0, 220) -- maior
-Window.Position = UDim2.new(0.3, 0, 0.3, 0)
+Window.Size = UDim2.new(0, 640, 0, 240)
+Window.Position = UDim2.new(0.35, 0, 0.3, 0)
 Window.AnchorPoint = Vector2.new(0.5, 0.5)
 Window.BackgroundTransparency = 0.12
 Window.BackgroundColor3 = Color3.fromRGB(36,36,36)
@@ -37,7 +56,7 @@ WindowStroke.Parent = Window
 -- Top bar
 local TopBar = Instance.new("Frame")
 TopBar.Name = "TopBar"
-TopBar.Size = UDim2.new(1, 0, 0, 40)
+TopBar.Size = UDim2.new(1, 0, 0, 44)
 TopBar.Position = UDim2.new(0, 0, 0, 0)
 TopBar.BackgroundTransparency = 1
 TopBar.Parent = Window
@@ -48,11 +67,10 @@ Title.Size = UDim2.new(0.7, -12, 1, 0)
 Title.Position = UDim2.new(0, 12, 0, 0)
 Title.BackgroundTransparency = 1
 Title.Text = "FIAT HUB"
-Title.TextSize = 20
+Title.TextSize = 22
 Title.Font = Enum.Font.SourceSansBold
 Title.TextXAlignment = Enum.TextXAlignment.Left
 Title.TextYAlignment = Enum.TextYAlignment.Center
-Title.TextStrokeTransparency = 0.85
 Title.Parent = TopBar
 
 local Subtitle = Instance.new("TextLabel")
@@ -61,7 +79,7 @@ Subtitle.Size = UDim2.new(0.3, -12, 1, 0)
 Subtitle.Position = UDim2.new(0.7, 12, 0, 0)
 Subtitle.BackgroundTransparency = 1
 Subtitle.Text = "by: fiat gordin"
-Subtitle.TextSize = 11
+Subtitle.TextSize = 12
 Subtitle.Font = Enum.Font.SourceSans
 Subtitle.TextXAlignment = Enum.TextXAlignment.Right
 Subtitle.TextColor3 = Color3.fromRGB(230,230,230)
@@ -70,8 +88,8 @@ Subtitle.Parent = TopBar
 -- Controls (icons only)
 local Controls = Instance.new("Frame")
 Controls.Name = "Controls"
-Controls.Size = UDim2.new(0, 100, 1, 0)
-Controls.Position = UDim2.new(1, -100, 0, 0)
+Controls.Size = UDim2.new(0, 110, 1, 0)
+Controls.Position = UDim2.new(1, -110, 0, 0)
 Controls.AnchorPoint = Vector2.new(1, 0)
 Controls.BackgroundTransparency = 1
 Controls.Parent = TopBar
@@ -79,13 +97,13 @@ Controls.Parent = TopBar
 local controlsLayout = Instance.new("UIListLayout")
 controlsLayout.FillDirection = Enum.FillDirection.Horizontal
 controlsLayout.HorizontalAlignment = Enum.HorizontalAlignment.Right
-controlsLayout.Padding = UDim.new(0, 6)
+controlsLayout.Padding = UDim.new(0, 8)
 controlsLayout.Parent = Controls
 
 local function MakeIconButton(symbol, name)
     local btn = Instance.new("TextButton")
     btn.Name = name or "IconBtn"
-    btn.Size = UDim2.new(0, 30, 0, 30)
+    btn.Size = UDim2.new(0, 34, 0, 34)
     btn.AutoButtonColor = true
     btn.Text = symbol
     btn.TextScaled = true
@@ -105,27 +123,26 @@ local CloseBtn = MakeIconButton("✕", "Close")
 -- Content
 local Content = Instance.new("Frame")
 Content.Name = "Content"
-Content.Size = UDim2.new(1, -16, 1, -56)
-Content.Position = UDim2.new(0, 8, 0, 48)
+Content.Size = UDim2.new(1, -20, 1, -64)
+Content.Position = UDim2.new(0, 10, 0, 54)
 Content.BackgroundTransparency = 1
 Content.Parent = Window
 
--- Left icons (main icons column)
+-- Left icons
 local LeftIcons = Instance.new("Frame")
 LeftIcons.Name = "LeftIcons"
 LeftIcons.Size = UDim2.new(0, 56, 1, 0)
-LeftIcons.Position = UDim2.new(0, 8, 0, 0)
+LeftIcons.Position = UDim2.new(0, 10, 0, 0)
 LeftIcons.BackgroundTransparency = 1
 LeftIcons.Parent = Content
 
 local leftLayout = Instance.new("UIListLayout")
-leftLayout.SortOrder = Enum.SortOrder.LayoutOrder
 leftLayout.FillDirection = Enum.FillDirection.Vertical
 leftLayout.VerticalAlignment = Enum.VerticalAlignment.Top
 leftLayout.Padding = UDim.new(0, 10)
 leftLayout.Parent = LeftIcons
 
--- Middle area for function area and dynamic buttons below icons
+-- Middle top and bottom (where cards appear and where buttons appear below icons)
 local Middle = Instance.new("Frame")
 Middle.Name = "Middle"
 Middle.Size = UDim2.new(1, -160, 1, 0)
@@ -134,14 +151,14 @@ Middle.BackgroundTransparency = 1
 Middle.Parent = Content
 
 local middleTop = Instance.new("Frame")
-middleTop.Size = UDim2.new(1, 0, 0.6, 0)
+middleTop.Size = UDim2.new(1, 0, 0.66, 0)
 middleTop.Position = UDim2.new(0, 0, 0, 0)
 middleTop.BackgroundTransparency = 1
 middleTop.Parent = Middle
 
 local middleBottom = Instance.new("Frame")
-middleBottom.Size = UDim2.new(1, 0, 0.4, 0)
-middleBottom.Position = UDim2.new(0, 0, 0.6, 0)
+middleBottom.Size = UDim2.new(1, 0, 0.34, 0)
+middleBottom.Position = UDim2.new(0, 0, 0.66, 0)
 middleBottom.BackgroundTransparency = 1
 middleBottom.Parent = Middle
 
@@ -158,7 +175,7 @@ bottomLayout.Padding = UDim.new(0, 8)
 bottomLayout.HorizontalAlignment = Enum.HorizontalAlignment.Left
 bottomLayout.Parent = middleBottom
 
--- Right icons column
+-- Right icons
 local RightIcons = Instance.new("Frame")
 RightIcons.Name = "RightIcons"
 RightIcons.Size = UDim2.new(0, 56, 1, 0)
@@ -173,17 +190,17 @@ rightLayout.VerticalAlignment = Enum.VerticalAlignment.Top
 rightLayout.Padding = UDim.new(0, 10)
 rightLayout.Parent = RightIcons
 
--- Top-left small icons (home, gear)
+-- Small top-left icons
 local TopLeftIcons = Instance.new("Frame")
 TopLeftIcons.Name = "TopLeftIcons"
-TopLeftIcons.Size = UDim2.new(0, 80, 0, 36)
+TopLeftIcons.Size = UDim2.new(0, 96, 0, 44)
 TopLeftIcons.Position = UDim2.new(0, 0, 0, 0)
 TopLeftIcons.BackgroundTransparency = 1
 TopLeftIcons.Parent = Middle
 
 local homeBtn = Instance.new("TextButton")
-homeBtn.Size = UDim2.new(0, 32, 0, 32)
-homeBtn.Position = UDim2.new(0, 4, 0, 2)
+homeBtn.Size = UDim2.new(0, 36, 0, 36)
+homeBtn.Position = UDim2.new(0, 6, 0, 4)
 homeBtn.Text = "🏠"
 homeBtn.BackgroundTransparency = 0.25
 homeBtn.Font = Enum.Font.SourceSansBold
@@ -193,8 +210,8 @@ hcorner.CornerRadius = UDim.new(0, 8)
 hcorner.Parent = homeBtn
 
 local gearBtn = Instance.new("TextButton")
-gearBtn.Size = UDim2.new(0, 32, 0, 32)
-gearBtn.Position = UDim2.new(0, 44, 0, 2)
+gearBtn.Size = UDim2.new(0, 36, 0, 36)
+gearBtn.Position = UDim2.new(0, 48, 0, 4)
 gearBtn.Text = "⚙"
 gearBtn.BackgroundTransparency = 0.25
 gearBtn.Font = Enum.Font.SourceSansBold
@@ -203,7 +220,7 @@ local gcorner = Instance.new("UICorner")
 gcorner.CornerRadius = UDim.new(0, 8)
 gcorner.Parent = gearBtn
 
--- Sidebar (slides from left)
+-- Sidebar (left slide)
 local Sidebar = Instance.new("Frame")
 Sidebar.Name = "Sidebar"
 Sidebar.Size = UDim2.new(0, 180, 1, 0)
@@ -227,7 +244,7 @@ local minimized = false
 local sidebarOpen = false
 local compactMode = false
 
--- Title rainbow (only title; other letters white)
+-- Title rainbow
 local hue = 0
 local function HSLToRGB(h, s, l)
     local function hue2rgb(p, q, t)
@@ -256,7 +273,7 @@ RunService.Heartbeat:Connect(function(dt)
     Title.TextColor3 = HSLToRGB(hue, 0.7, 0.52)
 end)
 
--- Draggable window (fix: drag TopBar only for reliability)
+-- Drag window via TopBar
 local dragging = false
 local dragInput, dragStart, startPos
 
@@ -286,26 +303,24 @@ UserInputService.InputChanged:Connect(function(input)
     end
 end)
 
--- Minimize
+-- Minimize & Close behavior
 MinimizeBtn.MouseButton1Click:Connect(function()
     if minimized then
-        Window:TweenSize(UDim2.new(0, 600, 0, 220), Enum.EasingDirection.Out, Enum.EasingStyle.Quad, 0.18, true)
+        Window:TweenSize(UDim2.new(0, 640, 0, 240), Enum.EasingDirection.Out, Enum.EasingStyle.Quad, 0.18, true)
         Content.Visible = true
         minimized = false
     else
-        Window:TweenSize(UDim2.new(0, 260, 0, 48), Enum.EasingDirection.Out, Enum.EasingStyle.Quad, 0.18, true)
+        Window:TweenSize(UDim2.new(0, 300, 0, 48), Enum.EasingDirection.Out, Enum.EasingStyle.Quad, 0.18, true)
         Content.Visible = false
         minimized = true
     end
 end)
 
--- Close permanently
 CloseBtn.MouseButton1Click:Connect(function()
     closedPermanently = true
     ScreenGui:Destroy()
 end)
 
--- Toggle with K
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
     if gameProcessed then return end
     if input.KeyCode == Enum.KeyCode.K then
@@ -314,17 +329,16 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
     end
 end)
 
--- Sidebar toggle
+-- Sidebar open/close
 homeBtn.MouseButton1Click:Connect(function()
     sidebarOpen = not sidebarOpen
     if sidebarOpen then
-        Sidebar:TweenPosition(UDim2.new(0, 12, 0.2, -20), Enum.EasingDirection.Out, Enum.EasingStyle.Quad, 0.25, true)
+        Sidebar:TweenPosition(UDim2.new(0, 12, 0.18, -20), Enum.EasingDirection.Out, Enum.EasingStyle.Quad, 0.25, true)
     else
         Sidebar:TweenPosition(UDim2.new(-1, 0, 0, 0), Enum.EasingDirection.Out, Enum.EasingStyle.Quad, 0.25, true)
     end
 end)
 
--- Gear compact
 gearBtn.MouseButton1Click:Connect(function()
     compactMode = not compactMode
     if compactMode then
@@ -338,7 +352,7 @@ gearBtn.MouseButton1Click:Connect(function()
     else
         for _, v in ipairs(RightIcons:GetChildren()) do
             if v:IsA("TextButton") then
-                v:TweenSize(UDim2.new(0, 30, 0, 30), Enum.EasingDirection.Out, Enum.EasingStyle.Quad, 0.2, true)
+                v:TweenSize(UDim2.new(0, 34, 0, 34), Enum.EasingDirection.Out, Enum.EasingStyle.Quad, 0.2, true)
                 v.TextSize = 18
             end
         end
@@ -346,25 +360,21 @@ gearBtn.MouseButton1Click:Connect(function()
     end
 end)
 
--- Utility: clear middle top (function cards) and bottom (buttons)
+-- Helper to clear middle
 local function ClearMiddle()
     for _, v in ipairs(middleTop:GetChildren()) do
-        if v.Name:find("_card") or v:IsA("Frame") then
-            v:Destroy()
-        end
+        v:Destroy()
     end
     for _, v in ipairs(middleBottom:GetChildren()) do
-        if v.Name:find("_btn") or v:IsA("TextButton") then
-            v:Destroy()
-        end
+        v:Destroy()
     end
 end
 
--- Function card creator (fixed toggle behavior and dot movement)
+-- Function card creator
 local function CreateFunctionCard(name, desc)
     local card = Instance.new("Frame")
     card.Name = name .. "_card"
-    card.Size = UDim2.new(1, -12, 0, 46)
+    card.Size = UDim2.new(1, -12, 0, 52)
     card.BackgroundTransparency = 0.08
     card.BackgroundColor3 = Color3.fromRGB(22,22,22)
     card.Parent = middleTop
@@ -383,21 +393,31 @@ local function CreateFunctionCard(name, desc)
     label.Position = UDim2.new(0, 12, 0, 0)
     label.TextColor3 = Color3.fromRGB(230,230,230)
 
-    -- Toggle
+    local descLabel = Instance.new("TextLabel")
+    descLabel.Parent = card
+    descLabel.Size = UDim2.new(0.95, 0, 0, 14)
+    descLabel.Position = UDim2.new(0, 12, 0, 32)
+    descLabel.BackgroundTransparency = 1
+    descLabel.Text = desc or ""
+    descLabel.TextSize = 12
+    descLabel.Font = Enum.Font.SourceSans
+    descLabel.TextXAlignment = Enum.TextXAlignment.Left
+    descLabel.TextColor3 = Color3.fromRGB(180,180,180)
+
     local toggle = Instance.new("Frame")
     toggle.Name = "Toggle"
-    toggle.Size = UDim2.new(0, 60, 0, 30)
-    toggle.Position = UDim2.new(1, -76, 0.5, -15)
-    toggle.BackgroundColor3 = Color3.fromRGB(50,50,50)
+    toggle.Size = UDim2.new(0, 64, 0, 34)
+    toggle.Position = UDim2.new(1, -86, 0.5, -17)
+    toggle.BackgroundColor3 = Color3.fromRGB(58,58,58)
     toggle.Parent = card
     local tc = Instance.new("UICorner")
-    tc.CornerRadius = UDim.new(0, 15)
+    tc.CornerRadius = UDim.new(0, 17)
     tc.Parent = toggle
 
     local dot = Instance.new("Frame")
     dot.Name = "Dot"
-    dot.Size = UDim2.new(0, 24, 0, 24)
-    dot.Position = UDim2.new(0, 3, 0.5, -12)
+    dot.Size = UDim2.new(0, 28, 0, 28)
+    dot.Position = UDim2.new(0, 4, 0.5, -14)
     dot.BackgroundColor3 = Color3.fromRGB(240,240,240)
     dot.Parent = toggle
     local dcorner = Instance.new("UICorner")
@@ -408,12 +428,12 @@ local function CreateFunctionCard(name, desc)
     local function SetState(state)
         active = state
         if active then
-            dot:TweenPosition(UDim2.new(1, -27, 0.5, -12), Enum.EasingDirection.Out, Enum.EasingStyle.Quart, 0.14, true)
-            toggle.BackgroundColor3 = Color3.fromRGB(200,200,200) -- branco em vez de azul
+            dot:TweenPosition(UDim2.new(1, -32, 0.5, -14), Enum.EasingDirection.Out, Enum.EasingStyle.Quart, 0.16, true)
+            toggle.BackgroundColor3 = Color3.fromRGB(240,240,240)
             dot.BackgroundColor3 = Color3.fromRGB(36,36,36)
         else
-            dot:TweenPosition(UDim2.new(0, 3, 0.5, -12), Enum.EasingDirection.Out, Enum.EasingStyle.Quart, 0.14, true)
-            toggle.BackgroundColor3 = Color3.fromRGB(50,50,50)
+            dot:TweenPosition(UDim2.new(0, 4, 0.5, -14), Enum.EasingDirection.Out, Enum.EasingStyle.Quart, 0.16, true)
+            toggle.BackgroundColor3 = Color3.fromRGB(58,58,58)
             dot.BackgroundColor3 = Color3.fromRGB(240,240,240)
         end
     end
@@ -423,6 +443,18 @@ local function CreateFunctionCard(name, desc)
             SetState(not active)
             if card.OnToggle then
                 pcall(card.OnToggle, active)
+            else
+                -- placeholder: show message in bottom area
+                ClearMiddle()
+                local info = Instance.new("TextLabel")
+                info.Size = UDim2.new(1, -12, 0, 32)
+                info.Position = UDim2.new(0, 6, 0, 6)
+                info.BackgroundTransparency = 1
+                info.Text = "Placeholder: lógica não definida."
+                info.Font = Enum.Font.SourceSans
+                info.TextSize = 14
+                info.TextColor3 = Color3.fromRGB(240,240,240)
+                info.Parent = middleBottom
             end
         end
     end)
@@ -431,7 +463,7 @@ local function CreateFunctionCard(name, desc)
     return card
 end
 
--- Player highlight feature
+-- Highlights
 local highlightEnabled = false
 local playerHighlights = {}
 local playerAddedConn, playerRemovedConn
@@ -448,7 +480,7 @@ local function updateHighlights()
     ClearHighlights()
     if not highlightEnabled then return end
     for _, plr in ipairs(Players:GetPlayers()) do
-        if plr ~= Players.LocalPlayer and plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") then
+        if plr ~= LocalPlayer and plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") then
             local char = plr.Character
             local h = Instance.new("Highlight")
             h.Name = "FiatHighlight"
@@ -484,8 +516,8 @@ local function enableHighlightPlayers(enable)
     highlightEnabled = enable
     if enable then
         updateHighlights()
-        playerAddedConn = Players.PlayerAdded:Connect(function() updateHighlights() end)
-        playerRemovedConn = Players.PlayerRemoving:Connect(function() updateHighlights() end)
+        playerAddedConn = Players.PlayerAdded:Connect(updateHighlights)
+        playerRemovedConn = Players.PlayerRemoving:Connect(updateHighlights)
     else
         ClearHighlights()
         if playerAddedConn then playerAddedConn:Disconnect() playerAddedConn = nil end
@@ -493,11 +525,41 @@ local function enableHighlightPlayers(enable)
     end
 end
 
--- Select player UI / Spectate implementation
+-- Select player & spectate
 local selectedPlayer = nil
 local spectateEnabled = false
 local spectateConn
 
+-- camera state backup
+local oldCameraType = Camera.CameraType
+local oldCameraCFrame = Camera.CFrame
+
+local function StartSpectate(target)
+    if not target or not target.Character or not target.Character:FindFirstChild("HumanoidRootPart") then return end
+    if spectateConn then spectateConn:Disconnect() spectateConn = nil end
+    -- set camera to Scriptable to take control
+    oldCameraType = Camera.CameraType
+    Camera.CameraType = Enum.CameraType.Scriptable
+    spectateConn = RunService.RenderStepped:Connect(function()
+        if not target or not target.Character or not target.Character:FindFirstChild("HumanoidRootPart") then
+            return
+        end
+        local root = target.Character.HumanoidRootPart
+        -- persistent follow: smooth lerp behind player
+        local desired = root.CFrame * CFrame.new(0, 2.2, 6)
+        Camera.CFrame = Camera.CFrame:Lerp(desired, 0.28)
+    end)
+end
+
+local function StopSpectate()
+    if spectateConn then spectateConn:Disconnect() spectateConn = nil end
+    -- restore camera
+    pcall(function()
+        Camera.CameraType = oldCameraType or Enum.CameraType.Custom
+    end)
+end
+
+-- Select player panel
 local function CreateSelectPlayerPanel()
     local panel = Instance.new("Frame")
     panel.Name = "SelectPlayerPanel"
@@ -516,67 +578,12 @@ local function CreateSelectPlayerPanel()
     ui.Padding = UDim.new(0, 6)
 
     local function refresh()
-        for _, child in ipairs(list:GetChildren()) do
-            if child:IsA("TextButton") then child:Destroy() end
-        end
+        for _, child in ipairs(list:GetChildren()) do if child:IsA("TextButton") then child:Destroy() end end
         local y = 0
         for _, plr in ipairs(Players:GetPlayers()) do
             local btn = Instance.new("TextButton")
             btn.Name = "playerBtn_" .. plr.UserId
-n            btn.Size = UDim2.new(1, -12, 0, 28)
+            btn.Size = UDim2.new(1, -12, 0, 30)
             btn.Position = UDim2.new(0, 6, 0, y)
             btn.AnchorPoint = Vector2.new(0,0)
-            btn.BackgroundTransparency = 0.12
-            btn.Text = plr.Name
-            btn.Font = Enum.Font.SourceSans
-            btn.TextSize = 14
-            btn.Parent = list
-            btn.MouseButton1Click:Connect(function()
-                selectedPlayer = plr
-                -- highlight selection visually
-                for _, b in ipairs(list:GetChildren()) do if b:IsA("TextButton") then b.BackgroundTransparency = 0.12 end end
-                btn.BackgroundTransparency = 0.02
-            end)
-            y = y + 36
-        end
-        list.CanvasSize = UDim2.new(0, 0, 0, y)
-    end
-
-    refresh()
-    -- refresh when players change
-    Players.PlayerAdded:Connect(refresh)
-    Players.PlayerRemoving:Connect(function() if selectedPlayer and not Players:FindFirstChild(selectedPlayer.Name) then selectedPlayer = nil end refresh() end)
-
-    return panel
-end
-
--- Spectate follow logic
-local function StartSpectate(target)
-    if not target or not target.Character or not target.Character:FindFirstChild("HumanoidRootPart") then return end
-    if spectateConn then spectateConn:Disconnect() spectateConn = nil end
-    spectateConn = RunService.RenderStepped:Connect(function()
-        if not target.Character or not target.Character:FindFirstChild("HumanoidRootPart") then return end
-        local root = target.Character.HumanoidRootPart
-        -- smooth camera lerp
-        Camera.CFrame = root.CFrame * CFrame.new(0, 2, 6) -- behind and above
-    end)
-end
-
-local function StopSpectate()
-    if spectateConn then spectateConn:Disconnect() spectateConn = nil end
-end
-
--- Create function cards and bottom buttons depending on icon clicked
-local function ShowFunctionsForIcon(iconName)
-    ClearMiddle()
-    if iconName == "home" then
-        -- Add Player Outline card
-        local card = CreateFunctionCard("Player Outline", "Coloca contorno branco nos players e nome acima")
-        middleTop.UIListLayout = nil
-        card.OnToggle = function(on)
-            enableHighlightPlayers(on)
-        end
-        -- Add Spectate card
-        local specCard = CreateFunctionCard("Spectate", "Seguir jogador selecionado (ativa/desativa)")
-        specCard.OnToggle = function(on)
-     
+            btn.BackgroundTrans
