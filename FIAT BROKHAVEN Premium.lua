@@ -1,14 +1,12 @@
---// Fiat Hub Ultra Cinema - Final Atualizado
+--// Fiat Hub Organizado - Todos Botões Visíveis e TeleportTool
+
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
-local Mouse = Players.LocalPlayer:GetMouse()
 local Player = Players.LocalPlayer
+local Mouse = Player:GetMouse()
 local Camera = workspace.CurrentCamera
-
--- Mensagens carinhosas
-local Messages = {"Tenha um bom dia!","Seja feliz!","Aproveite o momento!","Você é incrível!","Sorria sempre!"}
 
 -- Remove UI antiga
 if Player:FindFirstChild("PlayerGui"):FindFirstChild("FiatHubUI") then
@@ -37,10 +35,9 @@ local UICornerMain = Instance.new("UICorner")
 UICornerMain.CornerRadius = UDim.new(0,20)
 UICornerMain.Parent = MainFrame
 
--- Abrir UI animada
 TweenService:Create(MainFrame,TweenInfo.new(0.5,Enum.EasingStyle.Quad,Enum.EasingDirection.Out),{Size=UDim2.new(0,650,0,400)}):Play()
 
--- Title rainbow
+-- Title
 local Title = Instance.new("TextLabel")
 Title.Text = "FIAT HUB"
 Title.Size = UDim2.new(1,-60,0,30)
@@ -50,10 +47,6 @@ Title.Font = Enum.Font.SourceSansBold
 Title.TextScaled = true
 Title.TextColor3 = Color3.fromRGB(255,0,0)
 Title.Parent = MainFrame
-
-RunService.RenderStepped:Connect(function()
-    Title.TextColor3 = Color3.fromHSV(tick()%5/5,1,1)
-end)
 
 -- Min/Close
 local CloseButton = Instance.new("TextButton")
@@ -122,7 +115,7 @@ MidUIList.Parent = MidScroll
 MidUIList.SortOrder = Enum.SortOrder.LayoutOrder
 MidUIList.Padding = UDim.new(0,5)
 
--- Função criar botão simples com feedback
+-- Criar botão
 local ActiveFunctions = {}
 local function CreateButton(name,callback)
     local btn = Instance.new("TextButton")
@@ -143,13 +136,12 @@ local function CreateButton(name,callback)
         else
             btn.BackgroundColor3 = Color3.fromRGB(180,180,180)
             ActiveFunctions[name] = nil
-            print(name.." desligado")
         end
     end)
     MidScroll.CanvasSize = UDim2.new(0,0,0,MidUIList.AbsoluteContentSize.Y + 10)
 end
 
--- Aba transparente de players
+-- Aba de players
 local SelectedPlayer = nil
 local PlayerFrame = Instance.new("Frame")
 PlayerFrame.Size = UDim2.new(1,-70,0,120)
@@ -172,7 +164,6 @@ local function RefreshPlayerList()
             b.Parent = PlayerFrame
             b.MouseButton1Click:Connect(function()
                 SelectedPlayer = plr
-                print("Selecionou "..plr.Name)
             end)
             y = y + 35
         end
@@ -195,22 +186,17 @@ local function EspiarPlayer()
 end
 
 -- Teleport Tool
-local TeleportToolActive = false
-local function TeleportTool()
-    TeleportToolActive = not TeleportToolActive
-    if TeleportToolActive then
-        print("Teleport Tool ativado, clique no mapa para teleportar")
-        Mouse.Button1Down:Connect(function()
-            if TeleportToolActive and Mouse.Hit then
-                local pos = Mouse.Hit.Position
-                if Player.Character and Player.Character:FindFirstChild("HumanoidRootPart") then
-                    Player.Character.HumanoidRootPart.CFrame = CFrame.new(pos + Vector3.new(0,3,0))
-                end
-            end
-        end)
-    else
-        print("Teleport Tool desativado")
-    end
+local function CreateTeleportTool()
+    local Tool = Instance.new("Tool")
+    Tool.Name = "TeleportTool"
+    Tool.RequiresHandle = false
+    Tool.Parent = Player.Backpack
+
+    Tool.Activated:Connect(function()
+        if Mouse.Hit and Player.Character and Player.Character:FindFirstChild("HumanoidRootPart") then
+            Player.Character.HumanoidRootPart.CFrame = CFrame.new(Mouse.Hit.Position + Vector3.new(0,3,0))
+        end
+    end)
 end
 
 -- Funções dos ícones
@@ -226,73 +212,56 @@ local IconFunctions = {
             MainFrame.BackgroundColor3 = Color3.fromHSV(tick()%1,1,1)
         end)
         CreateButton("Parar Tudo",function()
-            for name,func in pairs(ActiveFunctions) do
-                print("Parando "..name)
-            end
             ActiveFunctions = {}
             MidScroll:ClearAllChildren()
         end)
     end,
     ["😈"] = function()
         MidScroll:ClearAllChildren()
-        CreateButton("Kill Ônibus",function() print("a lógica Kill Ônibus") end)
-        CreateButton("Kill Sofa",function() print("a lógica Kill Sofa") end)
+        CreateButton("Kill Ônibus",function() print("Kill Ônibus lógica") end)
+        CreateButton("Kill Sofa",function() print("Kill Sofa lógica") end)
     end,
     ["💥"] = function()
         MidScroll:ClearAllChildren()
-        CreateButton("Fling Ônibus",function() print("a lógica Fling Ônibus") end)
-        CreateButton("Fling Sofa",function() print("a lógica Fling Sofa") end)
+        CreateButton("Fling Ônibus",function() print("Fling Ônibus lógica") end)
+        CreateButton("Fling Sofa",function() print("Fling Sofa lógica") end)
     end,
     ["⏱️"] = function()
         MidScroll:ClearAllChildren()
         CreateButton("Almentar Speed",function() Player.Character.Humanoid.WalkSpeed = 130 end)
-        CreateButton("Teleport Tool",TeleportTool)
+        CreateButton("Teleport Tool",CreateTeleportTool)
     end,
     ["🌟"] = function()
         MidScroll:ClearAllChildren()
         CreateButton("Anti Lag",function()
-            if not RunService:FindFirstChild("AntiLagLoop") then
-                local loop = Instance.new("BindableEvent")
-                loop.Name = "AntiLagLoop"
-                loop.Parent = RunService
-                loop.Event:Connect(function()
-                    for _,obj in pairs(workspace:GetDescendants()) do
-                        if obj:IsA("PointLight") or obj:IsA("SurfaceLight") or obj:IsA("SpotLight") then
-                            obj:Destroy()
-                        end
+            RunService:BindToRenderStep("AntiLag",300,function()
+                for _,obj in pairs(workspace:GetDescendants()) do
+                    if obj:IsA("PointLight") or obj:IsA("SurfaceLight") or obj:IsA("SpotLight") then
+                        obj:Destroy()
                     end
-                end)
-                RunService:BindToRenderStep("AntiLagStep",300,function() loop:Fire() end)
-            end
+                end
+            end)
         end)
         CreateButton("Anti Colisão",function()
-            if not RunService:FindFirstChild("AntiCollideLoop") then
-                local loop = Instance.new("BindableEvent")
-                loop.Name = "AntiCollideLoop"
-                loop.Parent = RunService
-                loop.Event:Connect(function()
-                    for _,obj in pairs(workspace:GetDescendants()) do
-                        if obj:IsA("BasePart") and obj.Name~="HumanoidRootPart" and obj.Parent~=Player.Character then
-                            obj.CanCollide=false
-                        end
+            RunService:BindToRenderStep("AntiCollide",301,function()
+                for _,obj in pairs(workspace:GetDescendants()) do
+                    if obj:IsA("BasePart") and obj.Name~="HumanoidRootPart" and obj.Parent~=Player.Character then
+                        obj.CanCollide=false
                     end
-                end)
-                RunService:BindToRenderStep("AntiCollideStep",301,function() loop:Fire() end)
-            end
+                end
+            end)
         end)
         CreateButton("Anti Sit",function()
-            if Player.Character and Player.Character:FindFirstChild("Humanoid") then
-                Player.Character.Humanoid:GetPropertyChangedSignal("Sit"):Connect(function()
-                    if Player.Character.Humanoid.Sit then
-                        Player.Character.Humanoid.Sit=false
-                    end
-                end)
-            end
+            Player.Character.Humanoid:GetPropertyChangedSignal("Sit"):Connect(function()
+                if Player.Character.Humanoid.Sit then
+                    Player.Character.Humanoid.Sit=false
+                end
+            end)
         end)
     end,
     ["🤯"] = function()
         MidScroll:ClearAllChildren()
-        CreateButton("Lag Lanterna",function() print("a lógica Lag Lanterna") end)
+        CreateButton("Lag Lanterna",function() print("Lag Lanterna lógica") end)
     end
 }
 
@@ -301,14 +270,3 @@ for i,btn in pairs(IconButtons) do
         IconFunctions[btn.Text]()
     end)
 end
-
--- Mensagem carinhosa Fiat Botizin
-local RandomMessage = Instance.new("TextLabel")
-RandomMessage.Size = UDim2.new(1,-20,0,30)
-RandomMessage.Position = UDim2.new(0,10,1,-40)
-RandomMessage.BackgroundTransparency = 1
-RandomMessage.Font = Enum.Font.SourceSansItalic
-RandomMessage.TextScaled = true
-RandomMessage.TextColor3 = Color3.fromRGB(0,0,0)
-RandomMessage.Text = "Fiat Botizin: "..Messages[math.random(1,#Messages)]
-RandomMessage.Parent = MainFrame
