@@ -1,8 +1,9 @@
---// Fiat Hub Ultra Cinema - Versão Final Completa
+--// Fiat Hub Ultra Cinema - Final Atualizado
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
+local Mouse = Players.LocalPlayer:GetMouse()
 local Player = Players.LocalPlayer
 local Camera = workspace.CurrentCamera
 
@@ -145,7 +146,6 @@ local function CreateButton(name,callback)
             print(name.." desligado")
         end
     end)
-    -- Atualiza CanvasSize
     MidScroll.CanvasSize = UDim2.new(0,0,0,MidUIList.AbsoluteContentSize.Y + 10)
 end
 
@@ -194,6 +194,25 @@ local function EspiarPlayer()
     end
 end
 
+-- Teleport Tool
+local TeleportToolActive = false
+local function TeleportTool()
+    TeleportToolActive = not TeleportToolActive
+    if TeleportToolActive then
+        print("Teleport Tool ativado, clique no mapa para teleportar")
+        Mouse.Button1Down:Connect(function()
+            if TeleportToolActive and Mouse.Hit then
+                local pos = Mouse.Hit.Position
+                if Player.Character and Player.Character:FindFirstChild("HumanoidRootPart") then
+                    Player.Character.HumanoidRootPart.CFrame = CFrame.new(pos + Vector3.new(0,3,0))
+                end
+            end
+        end)
+    else
+        print("Teleport Tool desativado")
+    end
+end
+
 -- Funções dos ícones
 local IconFunctions = {
     ["🏠"] = function()
@@ -227,7 +246,7 @@ local IconFunctions = {
     ["⏱️"] = function()
         MidScroll:ClearAllChildren()
         CreateButton("Almentar Speed",function() Player.Character.Humanoid.WalkSpeed = 130 end)
-        CreateButton("Teleport Tool",function() print("a lógica Teleport Tool") end)
+        CreateButton("Teleport Tool",TeleportTool)
     end,
     ["🌟"] = function()
         MidScroll:ClearAllChildren()
@@ -255,11 +274,6 @@ local IconFunctions = {
                     for _,obj in pairs(workspace:GetDescendants()) do
                         if obj:IsA("BasePart") and obj.Name~="HumanoidRootPart" and obj.Parent~=Player.Character then
                             obj.CanCollide=false
-                        end
-                    end
-                    for _,tool in pairs(Player.Backpack:GetChildren()) do
-                        if tool:IsA("Tool") and tool:FindFirstChild("Handle") then
-                            tool.Handle.CanCollide=false
                         end
                     end
                 end)
