@@ -1,4 +1,4 @@
---// Fiat Hub Ultra Completo Funcional
+--// Fiat Hub Cinema Totalmente Funcional ON/OFF
 
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
@@ -27,73 +27,9 @@ ScreenGui.Name = "FiatHubUI"
 ScreenGui.Parent = Player:WaitForChild("PlayerGui")
 ScreenGui.ResetOnSpawn = false
 
--- Quadrado de carregamento
-local LoadFrame = Instance.new("Frame")
-LoadFrame.Size = UDim2.new(0,400,0,200)
-LoadFrame.Position = UDim2.new(0.5,0,0.5,0)
-LoadFrame.AnchorPoint = Vector2.new(0.5,0.5)
-LoadFrame.BackgroundColor3 = Color3.fromRGB(200,200,200)
-LoadFrame.Parent = ScreenGui
-
-local UICorner = Instance.new("UICorner")
-UICorner.CornerRadius = UDim.new(0,20)
-UICorner.Parent = LoadFrame
-
-local LoadImage = Instance.new("ImageLabel")
-LoadImage.Size = UDim2.new(0,80,0,80)
-LoadImage.Position = UDim2.new(0,20,0,20)
-LoadImage.Image = "rbxassetid://119584522141804"
-LoadImage.BackgroundTransparency = 1
-LoadImage.Parent = LoadFrame
-
-local LoadTitle = Instance.new("TextLabel")
-LoadTitle.Text = "Fiat Botizin"
-LoadTitle.Font = Enum.Font.SourceSansBold
-LoadTitle.TextScaled = true
-LoadTitle.Size = UDim2.new(0,200,0,30)
-LoadTitle.Position = UDim2.new(0,120,0,20)
-LoadTitle.BackgroundTransparency = 1
-LoadTitle.TextColor3 = Color3.fromRGB(0,0,0)
-LoadTitle.Parent = LoadFrame
-
-local LoadText = Instance.new("TextLabel")
-LoadText.Text = "Carregado"
-LoadText.Font = Enum.Font.SourceSans
-LoadText.TextScaled = true
-LoadText.Size = UDim2.new(0,200,0,30)
-LoadText.Position = UDim2.new(0,120,0,60)
-LoadText.BackgroundTransparency = 1
-LoadText.TextColor3 = Color3.fromRGB(50,50,50)
-LoadText.Parent = LoadFrame
-
-local MessageLabel = Instance.new("TextLabel")
-MessageLabel.Size = UDim2.new(0,360,0,40)
-MessageLabel.Position = UDim2.new(0,20,0,120)
-MessageLabel.BackgroundTransparency = 1
-MessageLabel.Font = Enum.Font.SourceSansItalic
-MessageLabel.TextScaled = true
-MessageLabel.TextColor3 = Color3.fromRGB(0,0,0)
-MessageLabel.Text = Messages[math.random(1,#Messages)]
-MessageLabel.Parent = LoadFrame
-
--- Mensagens piscando
-local msgIndex = 1
-local msgConnection
-msgConnection = RunService.RenderStepped:Connect(function()
-    msgIndex = msgIndex + 0.05
-    if msgIndex >= #Messages + 1 then msgIndex = 1 end
-    MessageLabel.Text = Messages[math.floor(msgIndex)]
-end)
-
--- Remove frame depois de 4 segundos
-task.delay(4,function()
-    msgConnection:Disconnect()
-    LoadFrame:Destroy()
-end)
-
 -- Janela principal da UI
 local MainFrame = Instance.new("Frame")
-MainFrame.Size = UDim2.new(0,0,0,350) -- inicia fechada horizontal
+MainFrame.Size = UDim2.new(0,0,0,350)
 MainFrame.Position = UDim2.new(0.5,0,0.5,0)
 MainFrame.AnchorPoint = Vector2.new(0.5,0.5)
 MainFrame.BackgroundColor3 = Color3.fromRGB(230,230,230)
@@ -154,14 +90,8 @@ MinimizeButton.TextScaled = true
 MinimizeButton.BackgroundColor3 = Color3.fromRGB(180,180,180)
 MinimizeButton.Parent = MainFrame
 
-local Minimized = false
 MinimizeButton.MouseButton1Click:Connect(function()
-    Minimized = not Minimized
-    for _, obj in pairs(MainFrame:GetChildren()) do
-        if obj ~= Title and obj ~= SubTitle and obj ~= CloseButton and obj ~= MinimizeButton and not obj:IsA("UICorner") then
-            obj.Visible = not Minimized
-        end
-    end
+    MainFrame.Visible = false
 end)
 
 CloseButton.MouseButton1Click:Connect(function()
@@ -170,30 +100,56 @@ end)
 
 UserInputService.InputBegan:Connect(function(input,gpe)
     if not gpe and input.KeyCode==Enum.KeyCode.K then
-        ScreenGui.Enabled = not ScreenGui.Enabled
+        MainFrame.Visible = true
     end
 end)
 
--- Porta deitada (ScrollingFrame)
-local FunctionFrame = Instance.new("ScrollingFrame")
-FunctionFrame.Size = UDim2.new(1,-70,1,-70)
-FunctionFrame.Position = UDim2.new(0,60,0,60)
-FunctionFrame.BackgroundColor3 = Color3.fromRGB(240,240,240)
-FunctionFrame.ScrollBarThickness = 6
-FunctionFrame.CanvasSize = UDim2.new(0,0,0,0)
-FunctionFrame.Parent = MainFrame
+-- Frame lateral dos ícones
+local IconFrame = Instance.new("Frame")
+IconFrame.Size = UDim2.new(0,50,1,0)
+IconFrame.Position = UDim2.new(0,0,0,0)
+IconFrame.BackgroundTransparency = 1
+IconFrame.Parent = MainFrame
 
-local UIListLayout = Instance.new("UIListLayout")
-UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
-UIListLayout.Padding = UDim.new(0,5)
-UIListLayout.Parent = FunctionFrame
+-- Ícones Casa e Engrenagem
+local CasaIcon = Instance.new("TextButton")
+CasaIcon.Size = UDim2.new(1,0,0,50)
+CasaIcon.Position = UDim2.new(0,0,0,50)
+CasaIcon.Text = "🏠"
+CasaIcon.Font = Enum.Font.SourceSans
+CasaIcon.TextScaled = true
+CasaIcon.BackgroundTransparency = 1
+CasaIcon.Parent = IconFrame
+
+local GearIcon = Instance.new("TextButton")
+GearIcon.Size = UDim2.new(1,0,0,50)
+GearIcon.Position = UDim2.new(0,0,0,120)
+GearIcon.Text = "⚙️"
+GearIcon.Font = Enum.Font.SourceSans
+GearIcon.TextScaled = true
+GearIcon.BackgroundTransparency = 1
+GearIcon.Parent = IconFrame
+
+-- Frame de botões do meio
+local MidButtonFrame = Instance.new("Frame")
+MidButtonFrame.Size = UDim2.new(1,-70,1,-70)
+MidButtonFrame.Position = UDim2.new(0,60,0,60)
+MidButtonFrame.BackgroundTransparency = 1
+MidButtonFrame.Parent = MainFrame
+
+-- Função para limpar botões do meio
+local function ClearMidButtons()
+    for _,v in pairs(MidButtonFrame:GetChildren()) do
+        if v:IsA("TextButton") or v:IsA("Frame") then v:Destroy() end
+    end
+end
 
 -- Função toggle ON/OFF
 local function CreateToggle(name,callback)
     local Toggle = Instance.new("Frame")
     Toggle.Size = UDim2.new(1,-10,0,40)
     Toggle.BackgroundColor3 = Color3.fromRGB(220,220,220)
-    Toggle.Parent = FunctionFrame
+    Toggle.Parent = MidButtonFrame
 
     local Label = Instance.new("TextLabel")
     Label.Text = name
@@ -239,58 +195,34 @@ local function CreateToggle(name,callback)
     return Toggle
 end
 
--- Frame lateral dos ícones
-local IconFrame = Instance.new("Frame")
-IconFrame.Size = UDim2.new(0,50,1,0)
-IconFrame.Position = UDim2.new(0,0,0,0)
-IconFrame.BackgroundTransparency = 1
-IconFrame.Parent = MainFrame
-
--- Ícones Casa e Engrenagem
-local CasaIcon = Instance.new("TextButton")
-CasaIcon.Size = UDim2.new(1,0,0,50)
-CasaIcon.Position = UDim2.new(0,0,0,50)
-CasaIcon.Text = "🏠"
-CasaIcon.Font = Enum.Font.SourceSans
-CasaIcon.TextScaled = true
-CasaIcon.BackgroundTransparency = 1
-CasaIcon.Parent = IconFrame
-
-local GearIcon = Instance.new("TextButton")
-GearIcon.Size = UDim2.new(1,0,0,50)
-GearIcon.Position = UDim2.new(0,0,0,120)
-GearIcon.Text = "⚙️"
-GearIcon.Font = Enum.Font.SourceSans
-GearIcon.TextScaled = true
-GearIcon.BackgroundTransparency = 1
-GearIcon.Parent = IconFrame
-
--- Frame de botões do meio
-local MidButtonFrame = Instance.new("Frame")
-MidButtonFrame.Size = UDim2.new(1,-70,1,-70)
-MidButtonFrame.Position = UDim2.new(0,60,0,60)
-MidButtonFrame.BackgroundTransparency = 1
-MidButtonFrame.Parent = MainFrame
-
--- Função para limpar botões do meio
-local function ClearMidButtons()
-    for _,v in pairs(MidButtonFrame:GetChildren()) do
-        if v:IsA("TextButton") or v:IsA("Frame") then v:Destroy() end
+-- Seleção de player
+local SelectedPlayer = nil
+local function RefreshPlayerButtons()
+    ClearMidButtons()
+    local y = 10
+    for _,plr in pairs(Players:GetPlayers()) do
+        if plr ~= Player then
+            local btn = CreateToggle(plr.Name,function(state)
+                if state then
+                    SelectedPlayer = plr
+                    print("Selecionou: "..plr.Name)
+                else
+                    SelectedPlayer = nil
+                    print("Deselecionou player")
+                end
+            end)
+            btn.Position = UDim2.new(0,10,0,y)
+            btn.Parent = MidButtonFrame
+            y = y + 50
+        end
     end
 end
 
--- Toggle real para Espiar Player
-local EspiarPlayers = {}
-local function EspiarPlayerToggle(state)
-    if state then
+-- Espiar Player só funciona após selecionar
+local function EspiarPlayer(state)
+    if state and SelectedPlayer and SelectedPlayer.Character and SelectedPlayer.Character:FindFirstChild("Humanoid") then
         RunService:BindToRenderStep("EspiarPlayer",301,function()
-            for _,v in pairs(Players:GetPlayers()) do
-                if v.Character and v.Character:FindFirstChild("HumanoidRootPart") then
-                    if v ~= Player then
-                        Camera.CameraSubject = v.Character.Humanoid
-                    end
-                end
-            end
+            Camera.CameraSubject = SelectedPlayer.Character.Humanoid
         end)
     else
         RunService:UnbindFromRenderStep("EspiarPlayer")
@@ -298,26 +230,21 @@ local function EspiarPlayerToggle(state)
     end
 end
 
--- Selecionar player toggle
-local SelectedPlayer
-local function SelecionarPlayerToggle(state)
-    if state then
-        SelectedPlayer = Players:FindFirstChild("Player2") -- placeholder
-        print("Selecionou player: "..(SelectedPlayer and SelectedPlayer.Name or "Nenhum"))
-    else
-        SelectedPlayer = nil
-    end
-end
-
--- Botões de casa
+-- Botões Casa
 local CasaButtons = {
-    {Name="Espiar Player",Func=EspiarPlayerToggle},
-    {Name="Selecionar Player",Func=SelecionarPlayerToggle},
+    {Name="Selecionar Player",Func=function(state)
+        if state then
+            RefreshPlayerButtons()
+        else
+            ClearMidButtons()
+        end
+    end},
+    {Name="Espiar Player",Func=EspiarPlayer}
 }
 
--- Botão de engrenagem
+-- Botão Engrenagem
 local GearButtons = {
-    {Name="UI Colorida",Func=function(state) 
+    {Name="UI Colorida",Func=function(state)
         if state then
             MainFrame.BackgroundColor3 = Color3.fromHSV(tick()%1,1,1)
         else
@@ -344,3 +271,14 @@ end)
 GearIcon.MouseButton1Click:Connect(function()
     CreateMidButtons(GearButtons)
 end)
+
+-- Mensagem aleatória Fiat Botizin
+local RandomMessage = Instance.new("TextLabel")
+RandomMessage.Size = UDim2.new(1,-20,0,30)
+RandomMessage.Position = UDim2.new(0,10,1,-40)
+RandomMessage.BackgroundTransparency = 1
+RandomMessage.Font = Enum.Font.SourceSansItalic
+RandomMessage.TextScaled = true
+RandomMessage.TextColor3 = Color3.fromRGB(0,0,0)
+RandomMessage.Text = "Fiat Botizin: "..Messages[math.random(1,#Messages)]
+RandomMessage.Parent = MainFrame
