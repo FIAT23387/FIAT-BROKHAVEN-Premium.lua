@@ -294,3 +294,21 @@ task.spawn(function()
         end
     end
 end)
+-- Sempre aplicar a fonte personalizada em todos os objetos de texto da UI
+local function AplicarFonte()
+    for _,obj in ipairs(ScreenGui:GetDescendants()) do
+        if obj:IsA("TextLabel") or obj:IsA("TextButton") or obj:IsA("TextBox") then
+            obj.FontFace = Font.new("rbxassetid://12187372175")
+        end
+    end
+end
+
+-- Aplicar imediatamente ao carregar
+AplicarFonte()
+
+-- Garantir que novos objetos criados também recebam a fonte
+ScreenGui.DescendantAdded:Connect(function(obj)
+    if obj:IsA("TextLabel") or obj:IsA("TextButton") or obj:IsA("TextBox") then
+        obj.FontFace = Font.new("rbxassetid://12187372175")
+    end
+end)
