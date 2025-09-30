@@ -286,3 +286,11 @@ for i,btn in pairs(IconButtons) do
 end
 
 print("✅ FIAT HUB carregado com UI antiga intacta e todos os botões funcionando")
+-- Aplicar fonte personalizada em toda a UI
+task.spawn(function()
+    for _,obj in ipairs(ScreenGui:GetDescendants()) do
+        if obj:IsA("TextLabel") or obj:IsA("TextButton") or obj:IsA("TextBox") then
+            obj.FontFace = Font.new("rbxassetid://12187372175")
+        end
+    end
+end)
