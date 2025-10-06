@@ -313,10 +313,10 @@ local tabs = {
             end)
         end,false)
     end,
-    ["🤯"] = function()
+    ["⚠️"] = function()
         clearMid()
-        createButton("Ceu customizado⚠️",customSky,true)
-        createButton("100% Anti Lag",antiLagFull,false)
+        createButton("Ceu customizado beta⚠️",customSky,true)
+        createButton("fling power 100% ⚠️",antiLagFull,false)
     end
 }
 
