@@ -286,8 +286,216 @@ local tabs = {
     ["💥"] = function()
         clearMid()
         createButton("Fling Ônibus",function() print("Fling Ônibus") end,true)
-        createButton("Fling Sofá",function() print("Fling Sofá") end,true)
-    end,
+        createButton("Fling Sofá",function() -- ControlSequenceServer_FixedUnequip.lua
+-- Coloque em ServerScriptService
+-- Corrigido: desequipa o Tool assim que teleporta para as coords longes (antes de girar)
+
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+
+local EVENT_NAME = "SelectedPlayerEvent"
+local initialPos = CFrame.new(-84, 20, -131)
+local farPos = CFrame.new(-917199, 8282828, 817181891)
+
+-- Busca/Cria o RemoteEvent
+local remote = ReplicatedStorage:FindFirstChild(EVENT_NAME)
+if not remote then
+    remote = Instance.new("RemoteEvent")
+    remote.Name = EVENT_NAME
+    remote.Parent = ReplicatedStorage
+    warn("[ControlSequence] RemoteEvent criado automaticamente em ReplicatedStorage (nome: " .. EVENT_NAME .. ")")
+end
+
+-- Teleporta character de forma segura
+local function safeTeleportCharacter(character, cf)
+    if not character then return false end
+    local hrp = character:FindFirstChild("HumanoidRootPart")
+    if hrp then
+        hrp.CFrame = cf
+        return true
+    end
+    return false
+end
+
+-- Equipar primeiro Tool disponível (Character primeiro, depois Backpack)
+local function equipFirstTool(humanoid, character)
+    if not humanoid or not character then return nil end
+    -- procura tool no Character
+    for _, v in pairs(character:GetChildren()) do
+        if v:IsA("Tool") then
+            pcall(function() humanoid:EquipTool(v) end)
+            return v
+        end
+    end
+    -- procura no Backpack
+    local player = Players:GetPlayerFromCharacter(character)
+    if player then
+        local backpack = player:FindFirstChild("Backpack")
+        if backpack then
+            for _, v in pairs(backpack:GetChildren()) do
+                if v:IsA("Tool") then
+                    v.Parent = character
+                    pcall(function() humanoid:EquipTool(v) end)
+                    return v
+                end
+            end
+        end
+    end
+    return nil
+end
+
+-- Desequipar (coloca o Tool no Backpack se possível)
+local function unequipTool(tool, character)
+    if not tool or not character then return end
+    local player = Players:GetPlayerFromCharacter(character)
+    if player then
+        local backpack = player:FindFirstChild("Backpack")
+        if backpack then
+            -- tenta mover o tool para o Backpack (desequipando)
+            pcall(function() tool.Parent = backpack end)
+            return
+        end
+    end
+    -- fallback: remove o tool com segurança
+    pcall(function() tool.Parent = nil end)
+end
+
+-- Começa a orbitar em volta de um alvo; retorna função para parar
+local function startOrbit(character, targetRoot, radius, speedRadiansPerSec)
+    local hrp = character and character:FindFirstChild("HumanoidRootPart")
+    if not hrp or not targetRoot then
+        return function() end
+    end
+
+    local running = true
+    local angle = 0
+    coroutine.wrap(function()
+        while running and hrp.Parent do
+            local dt = RunService.Heartbeat:Wait()
+            angle = angle + speedRadiansPerSec * dt
+            local tx, ty, tz = targetRoot.Position.X, targetRoot.Position.Y, targetRoot.Position.Z
+            local x = tx + math.cos(angle) * radius
+            local z = tz + math.sin(angle) * radius
+            local y = ty + 2
+            local look = CFrame.new(Vector3.new(x,y,z), targetRoot.Position)
+            hrp.CFrame = look
+        end
+    end)()
+
+    return function() running = false end
+end
+
+-- Handler principal do RemoteEvent
+remote.OnServerEvent:Connect(function(invoker, targetUserId)
+    if not invoker or typeof(targetUserId) ~= "number" then return end
+
+    local invChar = invoker.Character
+    if not invChar then
+        invoker:LoadCharacter()
+        invChar = invoker.Character
+        if not invChar then return end
+    end
+
+    -- Teleporta invocador para a posição inicial
+    safeTeleportCharacter(invChar, initialPos)
+
+    local humanoid = invChar:FindFirstChildOfClass("Humanoid")
+    if not humanoid then return end
+
+    -- Loop up/down enquanto espera sentar e ganhar tool
+    local upDownRunning = true
+    local upAngle = 0
+    local hrp = invChar:FindFirstChild("HumanoidRootPart")
+    local basePos = initialPos.Position
+    local upDownCoroutine = coroutine.wrap(function()
+        while upDownRunning and hrp and hrp.Parent do
+            upAngle = upAngle + (math.pi * 1.5) * (RunService.Heartbeat:Wait())
+            local yOffset = math.sin(upAngle) * 1.5
+            hrp.CFrame = CFrame.new(basePos + Vector3.new(0, yOffset, 0))
+            if humanoid.Sit then
+                break
+            end
+        end
+    end)
+    upDownCoroutine()
+
+    -- Espera até humanoid.Sit e que haja um Tool no inventário
+    local foundTool = nil
+    local maxWait = 60
+    local t0 = tick()
+    while tick() - t0 < maxWait do
+        if humanoid.Sit then
+            foundTool = equipFirstTool(humanoid, invChar)
+            if foundTool then break end
+        end
+        task.wait(0.1)
+    end
+
+    upDownRunning = false
+
+    if not foundTool then
+        foundTool = equipFirstTool(humanoid, invChar)
+    end
+
+    -- Vai até o player selecionado e orbita até o selecionado sentar
+    local targetPlayer = Players:GetPlayerByUserId(targetUserId)
+    if not targetPlayer or not targetPlayer.Character then
+        safeTeleportCharacter(invChar, initialPos)
+        return
+    end
+
+    local targetHRP = targetPlayer.Character:FindFirstChild("HumanoidRootPart")
+    if not targetHRP then
+        safeTeleportCharacter(invChar, initialPos)
+        return
+    end
+
+    -- Posiciona perto do target e começa a orbitar
+    local radius = 3
+    if hrp then
+        hrp.CFrame = CFrame.new(targetHRP.Position + Vector3.new(radius, 2, 0), targetHRP.Position)
+    end
+    local stopOrbit = startOrbit(invChar, targetHRP, radius, math.rad(6)) -- velocidade ajustada
+
+    -- Espera target sentar
+    local waitStart = tick()
+    local satTimeout = 120
+    while tick() - waitStart < satTimeout do
+        local tHum = targetPlayer.Character and targetPlayer.Character:FindFirstChildOfClass("Humanoid")
+        if tHum and tHum.Sit then break end
+        task.wait(0.05)
+    end
+
+    -- Quando target senta: para orbitar e teleporta invocador para coords longes
+    stopOrbit()
+    safeTeleportCharacter(invChar, farPos)
+
+    -- >>> CORREÇÃO AQUI: Desequipa IMEDIATAMENTE ao chegar nas coords longes (antes de girar)
+    if foundTool and foundTool.Parent and foundTool.Parent:IsDescendantOf(invChar) then
+        pcall(function() unequipTool(foundTool, invChar) end)
+    end
+
+    -- Agora girar rápido enquanto estiver longe (em si mesmo)
+    local invHrp = invChar:FindFirstChild("HumanoidRootPart")
+    local rapidStop = function() end
+    if invHrp then
+        rapidStop = startOrbit(invChar, invHrp, 1.5, math.rad(3600)) -- girando muito rápido
+    end
+    task.wait(1.0) -- duração do giro (ajuste se quiser)
+    rapidStop()
+
+    -- Retornar para coordenadas iniciais
+    safeTeleportCharacter(invChar, initialPos)
+
+    -- Tenta garantir estado neutro
+    if humanoid then
+        pcall(function() humanoid:ChangeState(Enum.HumanoidStateType.RunningNoPhysics) end)
+    end
+
+    print("[ControlSequence] Sequência finalizada para:", invoker.Name)
+end)
+				
     ["⏱️"] = function()
         clearMid()
         createButton("Almentar Speed",function() player.Character.Humanoid.WalkSpeed = 130 end,true)
