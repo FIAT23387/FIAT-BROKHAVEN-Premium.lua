@@ -295,7 +295,43 @@ local tabs = {
     end,
     ["🌟"] = function()
         clearMid()
-        createButton("Anti Lag",antiLag,false)
+        createButton("Anti Lag",antiLag,false)-- Script: AutoRemoveNewLights.lua
+-- Cria uma proteção para eliminar apenas luzes novas
+-- sem afetar as que já existiam no início do jogo.
+
+local Workspace = game:GetService("Workspace")
+
+-- Tipos de luz que vamos monitorar
+local LightTypes = {
+    "PointLight",
+    "SpotLight",
+    "SurfaceLight"
+}
+
+-- Guarda todas as luzes que já existiam no início
+local existingLights = {}
+
+for _, obj in pairs(Workspace:GetDescendants()) do
+    if table.find(LightTypes, obj.ClassName) then
+        existingLights[obj] = true
+    end
+end
+
+-- Função que apaga luzes novas
+local function checkNewLight(obj)
+    if table.find(LightTypes, obj.ClassName) then
+        if not existingLights[obj] then
+            -- Nova luz detectada → destrói imediatamente
+            obj:Destroy()
+        end
+    end
+end
+
+-- Detecta quando algo novo for adicionado no jogo
+Workspace.DescendantAdded:Connect(checkNewLight)
+
+print("[Proteção de Luz] Ativa: luzes antigas preservadas, novas serão removidas.")
+        
         createButton("Anti Colisão",function()
             RunService:BindToRenderStep("AntiCollide",301,function()
                 for _,obj in pairs(workspace:GetDescendants()) do
