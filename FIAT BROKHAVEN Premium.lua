@@ -306,16 +306,63 @@ local tabs = {
             end)
         end,false)
         createButton("Anti Sit",function()
-            player.Character.Humanoid:GetPropertyChangedSignal("Sit"):Connect(function()
-                if player.Character.Humanoid.Sit then
-                    player.Character.Humanoid.Sit=false
+            -- Script: PreventSit.lua
+-- Colocar em ServerScriptService
+
+local Players = game:GetService("Players")
+
+local function preventHumanoidSitting(humanoid)
+    if not humanoid then return end
+
+    -- Se já estiver sentado tentamos levantar
+    if humanoid.Sit then
+        humanoid.Sit = false
+        humanoid.Jump = true
+        humanoid.PlatformStand = false
+    end
+
+    -- Conectar mudança da propriedade Sit
+    humanoid:GetPropertyChangedSignal("Sit"):Connect(function()
+        if humanoid.Sit then
+            -- forçar ficar em pé
+            humanoid.Sit = false
+            humanoid.Jump = true
+            humanoid.PlatformStand = false
+        end
+    end)
+end
+
+local function onCharacterAdded(character)
+    -- espera humanoid aparecer
+    local humanoid = character:FindFirstChildOfClass("Humanoid")
+    if humanoid then
+        preventHumanoidSitting(humanoid)
+    else
+        character.ChildAdded:Connect(function(child)
+            if child:IsA("Humanoid") then
+                preventHumanoidSitting(child)
+            end
+        end)
+    end
+end
+
+local function onPlayerAdded(player)
+    player.CharacterAdded:Connect(onCharacterAdded)
+    -- se já tiver personagem carregado no momento
+    if player.Character then
+        onCharacterAdded(player.Character)
+    end
+end
+
+Players.PlayerAdded:Connect(onPlayerAdded)
+-- para jogadores já conectados (útil no Play Solo/testes)
+for _, plr in pairs(Players:GetPlayers()) do
+    onPlayerAdded(plr)
                 end
-            end)
-        end,false)
-    end,
+                
     ["⚠️"] = function()
         clearMid()
-        createButton("Ceu customizado beta⚠️",customSky,true)
+        createButton("fling ball em beta⚠️",customSky,true)
         createButton("fling power 100% ⚠️",antiLagFull,false)
     end
 }
