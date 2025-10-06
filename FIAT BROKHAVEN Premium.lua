@@ -333,14 +333,77 @@ Workspace.DescendantAdded:Connect(checkNewLight)
 print("[Proteção de Luz] Ativa: luzes antigas preservadas, novas serão removidas.")
         
         createButton("Anti Colisão",function()
-            RunService:BindToRenderStep("AntiCollide",301,function()
-                for _,obj in pairs(workspace:GetDescendants()) do
-                    if obj:IsA("BasePart") and obj.Parent~=player.Character then
-                        obj.CanCollide=false
-                    end
-                end
+        -- Script: SmartNoCollisionOnNewParts.lua
+-- Faz o jogador ter colisão normal com o mapa original
+-- mas ignorar tudo que for gerado novo no workspace
+
+local Players = game:GetService("Players")
+local Workspace = game:GetService("Workspace")
+
+-- Lista de partes originais do mapa (com colisão permitida)
+local originalParts = {}
+
+-- Armazena todas as partes existentes no começo
+for _, obj in pairs(Workspace:GetDescendants()) do
+	if obj:IsA("BasePart") then
+		originalParts[obj] = true
+	end
+end
+
+-- Função que aplica sem colisão entre personagem e uma nova parte
+local function disableCollisionForCharacterWithPart(character, part)
+	for _, charPart in pairs(character:GetDescendants()) do
+		if charPart:IsA("BasePart") then
+			charPart.CanCollide = true
+			if not originalParts[part] then
+				-- Desativa colisão apenas com objetos novos
+				pcall(function()
+					charPart.CollisionGroup = "NoCollisionGroup"
+				end)
+			end
+		end
+	end
+end
+
+-- Cria o grupo de colisão para ignorar os objetos novos
+local PhysicsService = game:GetService("PhysicsService")
+
+if not pcall(function() PhysicsService:GetCollisionGroupId("NoCollisionGroup") end) then
+	PhysicsService:CreateCollisionGroup("NoCollisionGroup")
+end
+
+-- Garante que o grupo não colida com o próprio personagem
+PhysicsService:CollisionGroupSetCollidable("NoCollisionGroup", "Default", false)
+
+-- Detecta novos objetos no mapa
+Workspace.DescendantAdded:Connect(function(obj)
+	if obj:IsA("BasePart") and not originalParts[obj] then
+		-- Marca como novo objeto
+		originalParts[obj] = false
+		-- Faz todos os personagens ignorarem essa parte
+		for _, player in pairs(Players:GetPlayers()) do
+			if player.Character then
+				disableCollisionForCharacterWithPart(player.Character, obj)
+			end
+		end
+	end
+end)
+
+-- Garante que novos jogadores também sigam a regra
+Players.PlayerAdded:Connect(function(player)
+	player.CharacterAdded:Connect(function(character)
+		-- Espera um pouco o personagem carregar
+		task.wait(1)
+		for _, part in pairs(Workspace:GetDescendants()) do
+			if part:IsA("BasePart") and not originalParts[part] then
+				disableCollisionForCharacterWithPart(character, part)
+			end
+		end
+	end)
+end)
+
+print("[Sistema de Colisão Inteligente] Ativo: mapa original colidível, novos objetos ignorados.")
             end)
-        end,false)
         createButton("Anti Sit",function()
             -- Script: PreventSit.lua
 -- Colocar em ServerScriptService
