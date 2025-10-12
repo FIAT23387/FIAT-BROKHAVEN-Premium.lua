@@ -195,7 +195,7 @@ ToggleTable["fling ball"]:OnChanged(function(value)
     end
 end)
 
--- Bolinha F que restaura a UI
+-- Bolinha F que simula tecla (volta ao comportamento anterior)
 do
     local CoreGui=game:GetService("CoreGui")
     local screenGui=Instance.new("ScreenGui")
@@ -238,12 +238,22 @@ do
     button.InputChanged:Connect(function(input) if input.UserInputType==Enum.UserInputType.MouseMovement or input.UserInputType==Enum.UserInputType.Touch then dragInput=input end end)
     UserInputService.InputChanged:Connect(function(input) if input==dragInput and dragging then update(input) end end)
 
-    -- Clicar: restaurar UI
+    -- Clicar: simula tecla que você mencionou
     button.MouseButton1Click:Connect(function()
-        if Window and Window.MainContainer then
-            Window.MainContainer.Visible=true
-            notify("Fiat Hub","UI restaurada",2)
-        end
+        pcall(function()
+            local vim=game:GetService("VirtualInputManager")
+            if vim and vim.SendKeyEvent then
+                vim:SendKeyEvent(true, Enum.KeyCode.LeftControl, false, game)
+                task.wait(0.06)
+                vim:SendKeyEvent(false, Enum.KeyCode.LeftControl, false, game)
+            else
+                local vu=game:GetService("VirtualUser")
+                vu:CaptureController()
+                UserInputService.InputBegan:Fire({UserInputType=Enum.UserInputType.Keyboard,KeyCode=Enum.KeyCode.LeftControl},false)
+                task.wait(0.06)
+                UserInputService.InputEnded:Fire({UserInputType=Enum.UserInputType.Keyboard,KeyCode=Enum.KeyCode.LeftControl},false)
+            end
+        end)
     end)
 end
 
