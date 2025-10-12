@@ -12,25 +12,25 @@ local LocalPlayer = Players.LocalPlayer
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 
--- Criar Janela Principal (UI cinza clara/transparente)
+-- Criar Janela Principal
 local Window = Fluent:CreateWindow({
     Title = "Fiat Hub",
     SubTitle = "by_fiat",
     TabWidth = 160,
     Size = UDim2.fromOffset(580, 460),
     Acrylic = true,
-    Theme = "Dark", -- manter Dark e ajustar cor manualmente
+    Theme = "Light", -- UI cinza clara/transparente
     MinimizeKey = nil
 })
 
--- Forçar Parent para PlayerGui
+-- Garantir que apareça no PlayerGui
 Window.Parent = LocalPlayer:WaitForChild("PlayerGui")
 
--- Ajuste extra de aparência
+-- Ajuste do container principal
 pcall(function()
     if Window.MainContainer then
-        Window.MainContainer.BackgroundColor3 = Color3.fromRGB(200,200,200)
-        Window.MainContainer.BackgroundTransparency = 0.3
+        Window.MainContainer.BackgroundColor3 = Color3.fromRGB(50,50,50)
+        Window.MainContainer.BackgroundTransparency = 0.2
     end
 end)
 
@@ -54,7 +54,7 @@ local LastCameraState = {
     CameraCFrame = nil
 }
 
--- Util: notificar
+-- Função utilitária de notificação
 local function notify(title, content, duration)
     Fluent:Notify({
         Title = title or "Fiat Hub",
@@ -74,6 +74,7 @@ local function buildPlayerValueList()
     return list
 end
 
+-- Definir player selecionado
 local function setSelectedPlayerByName(name)
     if not name or name == "" then
         SelectedPlayer = nil
@@ -97,15 +98,17 @@ PlayerDropdown = Tabs.Main:AddDropdown("PlayerDropdown", {
     Multi = false,
     Default = 1
 })
+-- Inicial
 local initialValues = buildPlayerValueList()
 if #initialValues > 0 then
     PlayerDropdown:SetValue(initialValues[1])
     setSelectedPlayerByName(initialValues[1])
 end
+PlayerDropdown:OnChanged(function(Value)
+    setSelectedPlayerByName(Value)
+end)
 
-PlayerDropdown:OnChanged(setSelectedPlayerByName)
-
--- Atualiza dropdown quando players entram/saem
+-- Atualizar dropdown quando players entram/saem
 Players.PlayerAdded:Connect(function(plr)
     PlayerDropdown:SetValues(buildPlayerValueList())
 end)
@@ -117,7 +120,7 @@ Players.PlayerRemoving:Connect(function(plr)
     end
 end)
 
--- Função util para checar seleção antes de ação
+-- Checar seleção antes de ações
 local function requireSelected(toggleObj)
     if not SelectedPlayer then
         notify("Erro", "Você precisa selecionar um player primeiro.", 3)
@@ -142,7 +145,49 @@ local toggleNames = {
     "kill canoa"
 }
 
--- Callback genérico
+-- Funções de espectar player
+local function startSpectate(targetPlayer)
+    if not targetPlayer or not targetPlayer.Character then return end
+    local hrp = targetPlayer.Character:FindFirstChild("HumanoidRootPart")
+    if not hrp then return end
+
+    local cam = workspace.CurrentCamera
+    LastCameraState.CameraType = cam.CameraType
+    LastCameraState.CameraSubject = cam.CameraSubject
+    LastCameraState.CameraCFrame = cam.CFrame
+
+    cam.CameraType = Enum.CameraType.Scriptable
+    Spectating = true
+
+    SpectateConnection = RunService.RenderStepped:Connect(function()
+        if not Spectating then return end
+        if not targetPlayer or not targetPlayer.Character or not hrp.Parent then
+            stopSpectate()
+            notify("Espectar", "Player saiu/morto. Parando espectar.", 3)
+            return
+        end
+        local targetCFrame = CFrame.new(hrp.Position + Vector3.new(0,2,8), hrp.Position)
+        cam.CFrame = cam.CFrame:Lerp(targetCFrame, 0.25)
+    end)
+end
+
+local function stopSpectate()
+    Spectating = false
+    if SpectateConnection then
+        SpectateConnection:Disconnect()
+        SpectateConnection = nil
+    end
+    local cam = workspace.CurrentCamera
+    if cam then
+        cam.CameraType = LastCameraState.CameraType or Enum.CameraType.Custom
+        cam.CameraSubject = LastCameraState.CameraSubject or LocalPlayer.Character:FindFirstChildWhichIsA("Humanoid")
+        if LastCameraState.CameraCFrame then
+            cam.CFrame = LastCameraState.CameraCFrame
+        end
+    end
+end
+
+-- Callback genérico para toggles
 local function makeToggleCallback(name, toggleObj)
     return function(value)
         if name == "espectar player" then
@@ -154,7 +199,9 @@ local function makeToggleCallback(name, toggleObj)
             end
             return
         end
+
         if not requireSelected(toggleObj) then return end
+
         if value then
             notify("Action", name .. " ativado para " .. (SelectedPlayer and SelectedPlayer.Name or "N/A"), 4)
         else
@@ -163,7 +210,7 @@ local function makeToggleCallback(name, toggleObj)
     end
 end
 
--- Criar toggles
+-- Criar os 9 toggles
 for _, tname in ipairs(toggleNames) do
     local id = tname:gsub("%s","_")
     local tog = Tabs.Main:AddToggle(id, { Title = tname, Default = false })
@@ -171,25 +218,56 @@ for _, tname in ipairs(toggleNames) do
     tog:OnChanged(makeToggleCallback(tname, tog))
 end
 
--- Black Role
+-- Black Role: botão para executar código
 Tabs.Main:AddButton({
     Title = "Black Role",
-    Description = "Executa BringFlingPlayers",
+    Description = "Executa código Lua",
     Callback = function()
-        loadstring(game:HttpGet("https://raw.githubusercontent.com/Bac0nHck/Scripts/main/BringFlingPlayers"))("More Scripts: t.me/arceusxscripts")
+        local inputText = ""
+        if Window and Window.Dialog then
+            Window:Dialog({
+                Title = "Black Role - Execute Code",
+                Content = "Cole seu código Lua abaixo e pressione Execute.",
+                Inputs = {{ Placeholder = "print('hello')", Text = "", Callback = function(txt) inputText = txt end }},
+                Buttons = {
+                    { Title = "Execute", Callback = function()
+                        if inputText == "" then
+                            notify("Black Role", "Nenhum código informado.", 3)
+                            return
+                        end
+                        local ok, res = pcall(function()
+                            local fn, err = loadstring(inputText)
+                            if not fn then error(err) end
+                            return fn()
+                        end)
+                        if not ok then
+                            notify("Black Role - Error", tostring(res), 5)
+                        else
+                            notify("Black Role", "Código executado com sucesso.", 3)
+                        end
+                    end},
+                    { Title = "Cancel", Callback = function() end }
+                }
+            })
+        else
+            notify("Black Role", "Dialog não disponível na versão do Fluent.", 4)
+        end
     end
 })
 
--- Brookhaven Audio
+-- Brookhaven Audio: botão normal
 Tabs.Main:AddButton({
     Title = "Brookhaven Audio",
-    Description = "Executa áudio",
+    Description = "Executa código de áudio",
     Callback = function()
-        loadstring(game:HttpGet("https://raw.githubusercontent.com/nmalka01/nmalka01/refs/heads/main/Brookhaven_audio"))()
+        pcall(function()
+            loadstring(game:HttpGet("https://raw.githubusercontent.com/nmalka01/nmalka01/refs/heads/main/Brookhaven_audio"))()
+        end)
+        notify("Brookhaven Audio", "Código executado.", 3)
     end
 })
 
--- Bola preta F
+-- Bola F arrastável que simula Ctrl
 do
     local CoreGui = game:GetService("CoreGui")
     local screenGui = Instance.new("ScreenGui")
@@ -198,8 +276,10 @@ do
     screenGui.Parent = CoreGui
 
     local button = Instance.new("TextButton")
+    button.Name = "ToggleBall"
     button.Size = UDim2.new(0,48,0,48)
     button.Position = UDim2.new(0,20,0,200)
+    button.AnchorPoint = Vector2.new(0,0)
     button.Text = "F"
     button.Font = Enum.Font.SourceSansBold
     button.TextSize = 24
@@ -209,17 +289,35 @@ do
     button.BackgroundColor3 = Color3.new(0,0,0)
     button.TextColor3 = Color3.new(1,1,1)
     button.BackgroundTransparency = 0
+    button.ZIndex = 9999
+    button.ClipsDescendants = true
+    button.Active = true
     local corner = Instance.new("UICorner", button)
     corner.CornerRadius = UDim.new(1,0)
 
-    -- Drag
+    local TweenService = game:GetService("TweenService")
+    spawn(function()
+        local colors = {Color3.fromRGB(0,0,0), Color3.fromRGB(40,40,40), Color3.fromRGB(80,0,80), Color3.fromRGB(0,40,80)}
+        local idx = 1
+        while task.wait(2) do
+            if button and button.Parent then
+                local nextIdx = idx % #colors + 1
+                local tweenInfo = TweenInfo.new(1.8, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, 0, true)
+                local tween = TweenService:Create(button, tweenInfo, { BackgroundColor3 = colors[nextIdx] })
+                tween:Play()
+                idx = nextIdx
+            else break end
+        end
+    end)
+
+    -- Dragging
     local dragging, dragInput, dragStart, startPos
     local function update(input)
         local delta = input.Position - dragStart
         button.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
     end
     button.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
             dragging = true
             dragStart = input.Position
             startPos = button.Position
@@ -229,19 +327,29 @@ do
         end
     end)
     button.InputChanged:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseMovement then dragInput = input end
+        if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+            dragInput = input
+        end
     end)
     UserInputService.InputChanged:Connect(function(input)
         if input == dragInput and dragging then update(input) end
     end)
 
-    -- Clicar = simula Ctrl
+    -- Clicar: simula Ctrl
     button.MouseButton1Click:Connect(function()
         pcall(function()
             local vim = game:GetService("VirtualInputManager")
-            vim:SendKeyEvent(true, Enum.KeyCode.LeftControl, false, game)
-            task.wait(0.06)
-            vim:SendKeyEvent(false, Enum.KeyCode.LeftControl, false, game)
+            if vim and vim.SendKeyEvent then
+                vim:SendKeyEvent(true, Enum.KeyCode.LeftControl, false, game)
+                task.wait(0.06)
+                vim:SendKeyEvent(false, Enum.KeyCode.LeftControl, false, game)
+            else
+                local vu = game:GetService("VirtualUser")
+                vu:CaptureController()
+                UserInputService.InputBegan:Fire({UserInputType=Enum.UserInputType.Keyboard,KeyCode=Enum.KeyCode.LeftControl},false)
+                task.wait(0.06)
+                UserInputService.InputEnded:Fire({UserInputType=Enum.UserInputType.Keyboard,KeyCode=Enum.KeyCode.LeftControl},false)
+            end
         end)
     end)
 end
@@ -256,18 +364,14 @@ SaveManager:SetFolder("FiatHub/specific-game")
 InterfaceManager:BuildInterfaceSection(Tabs.Settings)
 SaveManager:BuildConfigSection(Tabs.Settings)
 
--- Selecionar aba e notificar
+-- Selecionar aba inicial e notificar
 Window:SelectTab(1)
-Fluent:Notify({
-    Title = "Fiat Hub",
-    Content = "O script foi carregado com sucesso.",
-    Duration = 6
-})
+Fluent:Notify({ Title="Fiat Hub", Content="Script carregado com sucesso!", Duration=6 })
 
-pcall(function()
-    SaveManager:LoadAutoloadConfig()
-end)
+-- Carregar autoconfig
+pcall(function() SaveManager:LoadAutoloadConfig() end)
 
+-- Garantir desligamento da espectate caso o script/unload aconteça
 if Fluent then
     pcall(function()
         if Fluent.Unloaded then stopSpectate() end
