@@ -1,4 +1,4 @@
---// Fiat Hub UI Final - Base Fluent (branca transparente)
+--// Fiat Hub UI Final - Cinza
 --// by_fiat
 
 -- Carregar Fluent e Add-ons
@@ -6,15 +6,21 @@ local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/
 local SaveManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/SaveManager.lua"))()
 local InterfaceManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/InterfaceManager.lua"))()
 
--- Criar Janela Principal
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+local Camera = workspace.CurrentCamera
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+
+-- Criar Janela Principal (cinza)
 local Window = Fluent:CreateWindow({
     Title = "Fiat Hub",
     SubTitle = "by_fiat",
     TabWidth = 160,
-    Size = UDim2.fromOffset(580, 460),
+    Size = UDim2.fromOffset(700, 500),
     Acrylic = true,
-    Theme = "Light", -- branca transparente
-    MinimizeKey = Enum.KeyCode.LeftControl
+    Theme = "Dark", -- cinza escuro
+    MinimizeKey = nil
 })
 
 local Tabs = {
@@ -23,9 +29,6 @@ local Tabs = {
 }
 
 local Options = Fluent.Options
-local Players = game:GetService("Players")
-local LocalPlayer = Players.LocalPlayer
-local Camera = workspace.CurrentCamera
 
 -- Player selecionado
 local selectedPlayer = nil
@@ -34,7 +37,9 @@ local selectedPlayer = nil
 local function GetPlayerNames()
     local names = {}
     for _, p in pairs(Players:GetPlayers()) do
-        table.insert(names, p.Name)
+        if p ~= LocalPlayer then
+            table.insert(names, p.Name)
+        end
     end
     return names
 end
@@ -59,7 +64,6 @@ Players.PlayerRemoving:Connect(function(p)
     Dropdown:SetValues(GetPlayerNames())
 end)
 
--- Função para verificar se player está selecionado
 local function CheckPlayer()
     if not selectedPlayer or not selectedPlayer.Character then
         Fluent:Notify({
@@ -72,7 +76,7 @@ local function CheckPlayer()
     return true
 end
 
--- Adicionar os 9 toggles (apenas funcionam com player selecionado)
+-- Toggles
 local toggleNames = {
     "fling ball", "fling sofá", "killsofa", "lag lanterna",
     "espectar player", "fling ônibus", "kill ônibus", "fling barco", "kill canoa"
@@ -97,11 +101,25 @@ for _, name in ipairs(toggleNames) do
             else
                 Camera.CameraSubject = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Head")
             end
+        else
+            if Value then
+                Fluent:Notify({
+                    Title = "Action",
+                    Content = name.." ativado para "..selectedPlayer.Name,
+                    Duration = 3
+                })
+            else
+                Fluent:Notify({
+                    Title = "Action",
+                    Content = name.." desativado",
+                    Duration = 2
+                })
+            end
         end
     end)
 end
 
--- Botão Black Role (executa código fixo)
+-- Botão Black Role
 Tabs.Main:AddButton({
     Title = "Black Role",
     Description = "Executa código remoto",
@@ -110,7 +128,7 @@ Tabs.Main:AddButton({
     end
 })
 
--- Botão Brookhaven Audio (novo)
+-- Botão Brookhaven Audio
 Tabs.Main:AddButton({
     Title = "Brookhaven Audio",
     Description = "Executa script de áudio",
@@ -118,6 +136,44 @@ Tabs.Main:AddButton({
         loadstring(game:HttpGet("https://raw.githubusercontent.com/nmalka01/nmalka01/refs/heads/main/Brookhaven_audio"))()
     end
 })
+
+-- Bola preta "F" (simula Ctrl)
+do
+    local gui = Instance.new("ScreenGui", LocalPlayer:WaitForChild("PlayerGui"))
+    gui.Name = "FiatHubBall"
+
+    local ball = Instance.new("TextButton", gui)
+    ball.Size = UDim2.new(0, 70, 0, 70)
+    ball.Position = UDim2.new(0.05, 0, 0.5, 0)
+    ball.BackgroundColor3 = Color3.fromRGB(0,0,0)
+    ball.Text = "F"
+    ball.TextColor3 = Color3.fromRGB(255,255,255)
+    ball.TextScaled = true
+    ball.Font = Enum.Font.GothamBold
+    ball.Active = true
+    ball.BorderSizePixel = 0
+    ball.AutoButtonColor = false
+    ball.Draggable = true
+
+    -- Color animation
+    task.spawn(function()
+        local t = 0
+        while ball.Parent do
+            t += 0.05
+            ball.BackgroundColor3 = Color3.fromHSV((tick()%5)/5, 0.8, 0.9)
+            task.wait(0.05)
+        end
+    end)
+
+    -- Clique simula Ctrl
+    ball.MouseButton1Click:Connect(function()
+        local vim = game:GetService("VirtualInputManager")
+        if vim then
+            vim:SendKeyEvent(true, Enum.KeyCode.LeftControl, false, game)
+            vim:SendKeyEvent(false, Enum.KeyCode.LeftControl, false, game)
+        end
+    end)
+end
 
 -- Integrar Add-ons
 SaveManager:SetLibrary(Fluent)
@@ -129,42 +185,10 @@ SaveManager:SetFolder("FiatHub/specific-game")
 InterfaceManager:BuildInterfaceSection(Tabs.Settings)
 SaveManager:BuildConfigSection(Tabs.Settings)
 
--- Selecionar aba e notificar
 Window:SelectTab(1)
 Fluent:Notify({
     Title = "Fiat Hub",
     Content = "Interface carregada com sucesso.",
     Duration = 5
 })
-
 SaveManager:LoadAutoloadConfig()
-
--- Bola preta com "F" (simula tecla Ctrl)
-local ScreenGui = Instance.new("ScreenGui", game.CoreGui)
-local ball = Instance.new("TextButton", ScreenGui)
-ball.Size = UDim2.new(0, 50, 0, 50)
-ball.Position = UDim2.new(0.05, 0, 0.6, 0)
-ball.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-ball.Text = "F"
-ball.TextColor3 = Color3.fromRGB(255, 255, 255)
-ball.TextScaled = true
-ball.Font = Enum.Font.GothamBold
-ball.Active = true
-ball.Draggable = true
-ball.BorderSizePixel = 0
-ball.AutoButtonColor = false
-
--- Animação de cor
-task.spawn(function()
-    local t = 0
-    while task.wait(0.1) do
-        t += 0.05
-        ball.BackgroundColor3 = Color3.fromHSV((tick() % 5) / 5, 0.8, 0.9)
-    end
-end)
-
--- Simular tecla Ctrl
-ball.MouseButton1Click:Connect(function()
-    game:GetService("VirtualInputManager"):SendKeyEvent(true, Enum.KeyCode.LeftControl, false, game)
-    game:GetService("VirtualInputManager"):SendKeyEvent(false, Enum.KeyCode.LeftControl, false, game)
-end)
