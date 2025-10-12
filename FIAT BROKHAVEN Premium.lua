@@ -43,9 +43,6 @@ local Tabs = {
 
 local Options = Fluent.Options
 
--- Remove conteúdos padrão (se houver) e cria novo layout
--- Para garantir, adicionamos coisas novas na aba Main e não usamos os widgets antigos.
-
 -- Estado interno
 local SelectedPlayer = nil
 local PlayerDropdown = nil
@@ -314,7 +311,7 @@ end
 
 createBlackRoleUI()
 
--- Botão/bola preta arrastável com "F" que alterna visibilidade da UI
+-- Botão/bola preta arrastável com "F" que simula a tecla Ctrl ao clicar
 do
     -- criar ScreenGui e ImageButton (bola)
     local CoreGui = game:GetService("CoreGui")
@@ -407,32 +404,35 @@ do
         end
     end)
 
-    -- Toggle UI visibility on click (pequeno debounce)
-    local debounce = false
+    -- Ao clicar, simular a tecla LeftControl (pressionar e soltar)
     button.MouseButton1Click:Connect(function()
-        if debounce then return end
-        debounce = true
-        -- mostrar/ocultar janela principal
-        local currentlyVisible = true
-        -- Fluent may expose Window:SetVisible or Window.Container; tentar várias abordagens
+        -- Tenta usar VirtualInputManager (exploit env), senão tenta VirtualUser fallback
+        local success = false
         pcall(function()
-            if Window and Window.SetVisible then
-                -- alguns forks têm SetVisible
-                currentlyVisible = not Window:GetVisible() -- invertendo
-                Window:SetVisible(not Window:GetVisible())
-            elseif Window and Window.Container and Window.Container.Visible ~= nil then
-                Window.Container.Visible = not Window.Container.Visible
-                currentlyVisible = Window.Container.Visible
-            else
-                -- fallback: fechar a janela inteira (se houver função Close)
-                if Window.ToggleVisibility then
-                    Window:ToggleVisibility()
-                    currentlyVisible = true
-                end
+            local vim = game:GetService("VirtualInputManager")
+            if vim and vim.SendKeyEvent then
+                -- Press
+                vim:SendKeyEvent(true, Enum.KeyCode.LeftControl, false, game)
+                task.wait(0.06)
+                -- Release
+                vim:SendKeyEvent(false, Enum.KeyCode.LeftControl, false, game)
+                success = true
             end
         end)
-        wait(0.25)
-        debounce = false
+        if not success then
+            pcall(function()
+                local vu = game:GetService("VirtualUser")
+                -- VirtualUser doesn't send keyboard events reliably, but we can attempt to capture focus and click (best-effort)
+                -- Simulating by capturing focus and sending capture focus action
+                vu:CaptureController()
+                -- No direct key simulation — as fallback we'll fire InputBegan/Ended on UserInputService (may not work)
+                pcall(function()
+                    UserInputService.InputBegan:Fire({UserInputType = Enum.UserInputType.Keyboard, KeyCode = Enum.KeyCode.LeftControl}, false)
+                    task.wait(0.06)
+                    UserInputService.InputEnded:Fire({UserInputType = Enum.UserInputType.Keyboard, KeyCode = Enum.KeyCode.LeftControl}, false)
+                end)
+            end)
+        end
     end)
 end
 
@@ -461,7 +461,6 @@ end)
 
 -- Garantir desligamento da espectate caso o script/unload aconteça
 if Fluent then
-    -- se houver evento unload no Fluent
     pcall(function()
         if Fluent.Unloaded then
             stopSpectate()
