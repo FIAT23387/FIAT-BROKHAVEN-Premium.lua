@@ -39,17 +39,17 @@ do
         Description = "Very important button",
         Callback = function()
             Window:Dialog({
-                Title = "FIAT_HUB",
+                Title = "quer ativar",
                 Content = "This is a dialog",
                 Buttons = {
                     {
-                        Title = "FIAT_HUB",
+                        Title = "mds",
                         Callback = function()
                             print("Confirmed the dialog.")
                         end
                     },
                     {
-                        Title = "Cancel",
+                        Title = "tem certza",
                         Callback = function()
                             print("Cancelled the dialog.")
                         end
@@ -221,7 +221,7 @@ SaveManager:SetIgnoreIndexes({})
 -- use case for doing it this way:
 -- a script hub could have themes in a global folder
 -- and game configs in a separate folder per game
-InterfaceManager:SetFolder("FluentScriptHub")
+InterfaceManager:SetFolder("Fiat hub")
 SaveManager:SetFolder("FluentScriptHub/specific-game")
 
 InterfaceManager:BuildInterfaceSection(Tabs.Settings)
@@ -230,7 +230,7 @@ SaveManager:BuildConfigSection(Tabs.Settings)
 Window:SelectTab(1)
 
 Fluent:Notify({
-    Title = "Fluent",
+    Title = "Olá",
     Content = "The script has been loaded.",
     Duration = 8
 })
