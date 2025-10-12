@@ -1,20 +1,41 @@
+-- Fiat Hub (Fluent-based) - by_fiat
+-- Requisitos: Fluent + Addons (carregados abaixo)
+-- Cole isso num LocalScript no cliente
+
 -- Carregar Fluent e Add-ons
 local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
 local SaveManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/SaveManager.lua"))()
 local InterfaceManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/InterfaceManager.lua"))()
 
--- Criar Janela Principal
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+
+-- Criar Janela Principal (theme adaptado para visual branco/transparente)
 local Window = Fluent:CreateWindow({
-    Title = "Fluent " .. Fluent.Version,
-    SubTitle = "by dawid",
+    Title = "Fiat Hub",
+    SubTitle = "by_fiat",
     TabWidth = 160,
     Size = UDim2.fromOffset(580, 460),
     Acrylic = true,
-    Theme = "Dark",
-    MinimizeKey = Enum.KeyCode.LeftControl
+    Theme = "Light", -- deixa mais claro (tentativa de UI branca/transparente)
+    MinimizeKey = nil -- sem atalho de minimizar
 })
 
--- Adicionar Abas
+-- Ajuste extra de aparência (caso Fluent exponha frames)
+pcall(function()
+    if Window.MainContainer then
+        if Window.MainContainer.BackgroundColor3 then
+            Window.MainContainer.BackgroundColor3 = Color3.fromRGB(255,255,255)
+        end
+        if Window.MainContainer.BackgroundTransparency then
+            Window.MainContainer.BackgroundTransparency = 0.4
+        end
+    end
+end)
+
+-- Abas
 local Tabs = {
     Main = Window:AddTab({ Title = "Main", Icon = "" }),
     Settings = Window:AddTab({ Title = "Settings", Icon = "settings" })
@@ -22,184 +43,430 @@ local Tabs = {
 
 local Options = Fluent.Options
 
--- Notificação
-Fluent:Notify({
-    Title = "Notification",
-    Content = "This is a notification",
-    SubContent = "SubContent",
-    Duration = 5
-})
+-- Remove conteúdos padrão (se houver) e cria novo layout
+-- Para garantir, adicionamos coisas novas na aba Main e não usamos os widgets antigos.
 
--- Parágrafo
-Tabs.Main:AddParagraph({
-    Title = "Paragraph",
-    Content = "This is a paragraph.\nSecond line!"
-})
+-- Estado interno
+local SelectedPlayer = nil
+local PlayerDropdown = nil
+local ToggleTable = {}
+local SpectateConnection = nil
+local Spectating = false
+local LastCameraState = {
+    CameraType = nil,
+    CameraSubject = nil,
+    CameraCFrame = nil
+}
 
--- Botão
-Tabs.Main:AddButton({
-    Title = "Button",
-    Description = "Very important button",
-    Callback = function()
-        Window:Dialog({
-            Title = "Title",
-            Content = "This is a dialog",
-            Buttons = {
-                {
-                    Title = "Confirm",
-                    Callback = function()
-                        print("Confirmed the dialog.")
-                    end
-                },
-                {
-                    Title = "Cancel",
-                    Callback = function()
-                        print("Cancelled the dialog.")
-                    end
-                }
-            }
-        })
-    end
-})
+-- Util: notificar
+local function notify(title, content, duration)
+    Fluent:Notify({
+        Title = title or "Fiat Hub",
+        Content = content or "",
+        Duration = duration or 4
+    })
+end
 
--- Toggle
-local Toggle = Tabs.Main:AddToggle("MyToggle", {Title = "Toggle", Default = false })
-Toggle:OnChanged(function()
-    print("Toggle changed:", Options.MyToggle.Value)
-end)
-Options.MyToggle:SetValue(false)
-
--- Slider
-local Slider = Tabs.Main:AddSlider("Slider", {
-    Title = "Slider",
-    Description = "This is a slider",
-    Default = 2,
-    Min = 0,
-    Max = 5,
-    Rounding = 1,
-    Callback = function(Value)
-        print("Slider was changed:", Value)
-    end
-})
-Slider:OnChanged(function(Value)
-    print("Slider changed:", Value)
-end)
-Slider:SetValue(3)
-
--- Dropdown
-local Dropdown = Tabs.Main:AddDropdown("Dropdown", {
-    Title = "Dropdown",
-    Values = {"one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten", "eleven", "twelve", "thirteen", "fourteen"},
-    Multi = false,
-    Default = 1,
-})
-Dropdown:SetValue("four")
-Dropdown:OnChanged(function(Value)
-    print("Dropdown changed:", Value)
-end)
-
--- MultiDropdown
-local MultiDropdown = Tabs.Main:AddDropdown("MultiDropdown", {
-    Title = "Dropdown",
-    Description = "You can select multiple values.",
-    Values = {"one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten", "eleven", "twelve", "thirteen", "fourteen"},
-    Multi = true,
-    Default = {"seven", "twelve"},
-})
-MultiDropdown:SetValue({ three = true, five = true, seven = false })
-MultiDropdown:OnChanged(function(Value)
-    local Values = {}
-    for Value, State in next, Value do
-        table.insert(Values, Value)
-    end
-    print("Mutlidropdown changed:", table.concat(Values, ", "))
-end)
-
--- Colorpicker
-local Colorpicker = Tabs.Main:AddColorpicker("Colorpicker", {
-    Title = "Colorpicker",
-    Default = Color3.fromRGB(96, 205, 255)
-})
-Colorpicker:OnChanged(function()
-    print("Colorpicker changed:", Colorpicker.Value)
-end)
-Colorpicker:SetValueRGB(Color3.fromRGB(0, 255, 140))
-
--- Colorpicker com transparência
-local TColorpicker = Tabs.Main:AddColorpicker("TransparencyColorpicker", {
-    Title = "Colorpicker",
-    Description = "but you can change the transparency.",
-    Transparency = 0,
-    Default = Color3.fromRGB(96, 205, 255)
-})
-TColorpicker:OnChanged(function()
-    print(
-        "TColorpicker changed:", TColorpicker.Value,
-        "Transparency:", TColorpicker.Transparency
-    )
-end)
-
--- Keybind
-local Keybind = Tabs.Main:AddKeybind("Keybind", {
-    Title = "KeyBind",
-    Mode = "Toggle",
-    Default = "LeftControl",
-    Callback = function(Value)
-        print("Keybind clicked!", Value)
-    end,
-    ChangedCallback = function(New)
-        print("Keybind changed!", New)
-    end
-})
-Keybind:OnClick(function()
-    print("Keybind clicked:", Keybind:GetState())
-end)
-Keybind:OnChanged(function()
-    print("Keybind changed:", Keybind.Value)
-end)
-task.spawn(function()
-    while true do
-        wait(1)
-        local state = Keybind:GetState()
-        if state then
-            print("Keybind is being held down")
+-- Dropdown dinâmico de players (estilo dropdown do exemplo)
+local function buildPlayerValueList()
+    local list = {}
+    for _, p in ipairs(Players:GetPlayers()) do
+        if p ~= LocalPlayer then
+            table.insert(list, p.Name)
         end
-        if Fluent.Unloaded then break end
     end
-end)
-Keybind:SetValue("MB2", "Toggle")
+    return list
+end
 
--- Input
-local Input = Tabs.Main:AddInput("Input", {
-    Title = "Input",
-    Default = "Default",
-    Placeholder = "Placeholder",
-    Numeric = false,
-    Finished = false,
-    Callback = function(Value)
-        print("Input changed:", Value)
+-- Função para definir o SelectedPlayer por nome (ou nil)
+local function setSelectedPlayerByName(name)
+    if not name or name == "" then
+        SelectedPlayer = nil
+        notify("Player", "Nenhum player selecionado", 3)
+        return
     end
+    local p = Players:FindFirstChild(name)
+    if p then
+        SelectedPlayer = p
+        notify("Player", "Selecionado: " .. p.Name, 3)
+    else
+        SelectedPlayer = nil
+        notify("Player", "Player não encontrado: " .. tostring(name), 3)
+    end
+end
+
+-- Criar Dropdown de players (single select)
+PlayerDropdown = Tabs.Main:AddDropdown("PlayerDropdown", {
+    Title = "Select Player",
+    Values = buildPlayerValueList(),
+    Multi = false,
+    Default = 1
 })
-Input:OnChanged(function()
-    print("Input updated:", Input.Value)
+-- Set initial to first if exists
+local initialValues = buildPlayerValueList()
+if #initialValues > 0 then
+    PlayerDropdown:SetValue(initialValues[1])
+    setSelectedPlayerByName(initialValues[1])
+end
+
+PlayerDropdown:OnChanged(function(Value)
+    -- Value é string nome do player (no Fluent original Value)
+    setSelectedPlayerByName(Value)
 end)
 
--- Integrar Add-ons
+-- Atualiza dropdown quando players entram/saem
+Players.PlayerAdded:Connect(function(plr)
+    local values = buildPlayerValueList()
+    PlayerDropdown:SetValues(values)
+end)
+Players.PlayerRemoving:Connect(function(plr)
+    local values = buildPlayerValueList()
+    PlayerDropdown:SetValues(values)
+    -- se o removed era o selecionado, limpa seleção
+    if SelectedPlayer and SelectedPlayer.Name == plr.Name then
+        SelectedPlayer = nil
+        notify("Player", "Player saiu: " .. plr.Name, 3)
+    end
+end)
+
+-- Função util para checar seleção antes de ação
+local function requireSelected(toggleObj)
+    if not SelectedPlayer then
+        notify("Erro", "Você precisa selecionar um player primeiro.", 3)
+        if toggleObj and toggleObj.SetValue then
+            -- reverte toggle para false (se existente)
+            pcall(function() toggleObj:SetValue(false) end)
+        end
+        return false
+    end
+    return true
+end
+
+-- Lista de nomes dos 9 toggles
+local toggleNames = {
+    "fling ball",
+    "fling sofá",
+    "killsofa",
+    "lag lanterna",
+    "espectar player",
+    "fling ônibus",
+    "kill ônibus",
+    "fling barco",
+    "kill canoa"
+}
+
+-- Handler para o toggle 'espectar player' — lógica real
+local function startSpectate(targetPlayer)
+    if not targetPlayer or not targetPlayer.Character then return end
+    local hrp = targetPlayer.Character:FindFirstChild("HumanoidRootPart") or targetPlayer.Character:FindFirstChild("Torso") or targetPlayer.Character:FindFirstChild("UpperTorso")
+    if not hrp then
+        notify("Espectar", "O player não possui HumanoidRootPart.", 3)
+        return
+    end
+
+    local cam = workspace.CurrentCamera
+    -- salvar estado atual
+    LastCameraState.CameraType = cam.CameraType
+    LastCameraState.CameraSubject = cam.CameraSubject
+    -- set scriptable
+    cam.CameraType = Enum.CameraType.Scriptable
+    Spectating = true
+
+    -- Atualizar cada frame
+    SpectateConnection = RunService.RenderStepped:Connect(function()
+        if not Spectating then return end
+        if not targetPlayer or not targetPlayer.Character then
+            -- jogador morreu ou saiu
+            notify("Espectar", "Player desconectado/morto. Parando espectar.", 3)
+            -- desligar automaticamente
+            Spectating = false
+            if SpectateConnection then SpectateConnection:Disconnect() SpectateConnection = nil end
+            -- restaurar camera
+            if workspace.CurrentCamera then
+                workspace.CurrentCamera.CameraType = LastCameraState.CameraType or Enum.CameraType.Custom
+                workspace.CurrentCamera.CameraSubject = LastCameraState.CameraSubject or LocalPlayer.Character and LocalPlayer.Character:FindFirstChildWhichIsA("Humanoid") or nil
+            end
+            return
+        end
+        local newCFrame = hrp.CFrame * CFrame.new(0, 2, 8) -- offset de trás
+        -- suaviza movimento com Lerp
+        local currentCFrame = workspace.CurrentCamera.CFrame
+        workspace.CurrentCamera.CFrame = currentCFrame:Lerp(newCFrame, 0.25)
+    end)
+end
+
+local function stopSpectate()
+    Spectating = false
+    if SpectateConnection then
+        SpectateConnection:Disconnect()
+        SpectateConnection = nil
+    end
+    -- restaurar camera
+    if workspace.CurrentCamera then
+        workspace.CurrentCamera.CameraType = LastCameraState.CameraType or Enum.CameraType.Custom
+        if LastCameraState.CameraSubject then
+            workspace.CurrentCamera.CameraSubject = LastCameraState.CameraSubject
+        else
+            -- tenta setar pro humanoid local
+            if LocalPlayer.Character then
+                local humanoid = LocalPlayer.Character:FindFirstChildWhichIsA("Humanoid")
+                if humanoid then
+                    workspace.CurrentCamera.CameraSubject = humanoid
+                end
+            end
+        end
+    end
+end
+
+-- Callback genérico para toggles (os outros toggles apenas mostram notificação por enquanto)
+local function makeToggleCallback(name, toggleObj)
+    return function(value)
+        -- value = true/false
+        if name == "espectar player" then
+            if value then
+                if not requireSelected(toggleObj) then return end
+                startSpectate(SelectedPlayer)
+            else
+                stopSpectate()
+            end
+            return
+        end
+
+        -- demais toggles: checar player selecionado
+        if not requireSelected(toggleObj) then return end
+
+        -- Aqui você pode implementar lógicas reais para fling/kill/etc.
+        -- Por enquanto apenas notifica e mantém o estado do toggle:
+        if value then
+            notify("Action", name .. " ativado para " .. (SelectedPlayer and SelectedPlayer.Name or "N/A"), 4)
+            -- placeholder: executar rotina específica se desejar
+        else
+            notify("Action", name .. " desativado", 3)
+            -- placeholder stop
+        end
+    end
+end
+
+-- Criar os 9 toggles na aba Main
+for _, tname in ipairs(toggleNames) do
+    local id = tname:gsub("%s","_")
+    local tog = Tabs.Main:AddToggle(id, { Title = tname, Default = false })
+    ToggleTable[tname] = tog
+    tog:OnChanged(makeToggleCallback(tname, tog))
+end
+
+-- Black Role: botão que abre textbox para executar código (não precisa de player)
+local BlackRoleInput = nil
+local function createBlackRoleUI()
+    -- Adiciona botão que abre diálogo com textbox
+    Tabs.Main:AddButton({
+        Title = "Black Role",
+        Description = "Open a code input. Paste Lua code and Execute.",
+        Callback = function()
+            -- janela simples com Input e dois botões (Execute / Cancel)
+            local inputText = ""
+            -- Many Fluent builds have Window:Dialog or similar; usar Window:Dialog se disponível
+            if Window and Window.Dialog then
+                Window:Dialog({
+                    Title = "Black Role - Execute Code",
+                    Content = "Cole seu código Lua abaixo e pressione Execute.",
+                    Inputs = {
+                        {
+                            Placeholder = "print('hello')",
+                            Text = "",
+                            Callback = function(txt) inputText = txt end
+                        }
+                    },
+                    Buttons = {
+                        {
+                            Title = "Execute",
+                            Callback = function()
+                                if inputText == "" then
+                                    notify("Black Role", "Nenhum código informado.", 3)
+                                    return
+                                end
+                                local ok, res = pcall(function()
+                                    -- tentar compilar e executar em ambiente protegido (pcall)
+                                    local fn, err = loadstring(inputText)
+                                    if not fn then error(err) end
+                                    return fn()
+                                end)
+                                if not ok then
+                                    notify("Black Role - Error", tostring(res), 5)
+                                else
+                                    notify("Black Role", "Código executado com sucesso.", 3)
+                                end
+                            end
+                        },
+                        {
+                            Title = "Cancel",
+                            Callback = function() end
+                        }
+                    }
+                })
+            else
+                -- fallback: criar small input gui manual (simplificado)
+                notify("Black Role", "Dialog não disponível na versão do Fluent. Use outra interface.", 4)
+            end
+        end
+    })
+end
+
+createBlackRoleUI()
+
+-- Botão/bola preta arrastável com "F" que alterna visibilidade da UI
+do
+    -- criar ScreenGui e ImageButton (bola)
+    local CoreGui = game:GetService("CoreGui")
+    local screenGui = Instance.new("ScreenGui")
+    screenGui.Name = "FiatHubToggleBall"
+    screenGui.ResetOnSpawn = false
+    screenGui.Parent = CoreGui
+
+    local button = Instance.new("TextButton")
+    button.Name = "ToggleBall"
+    button.Size = UDim2.new(0,48,0,48)
+    button.Position = UDim2.new(0,20,0,200)
+    button.AnchorPoint = Vector2.new(0,0)
+    button.Text = "F"
+    button.Font = Enum.Font.SourceSansBold
+    button.TextSize = 24
+    button.BorderSizePixel = 0
+    button.AutoButtonColor = false
+    button.Parent = screenGui
+    button.BackgroundColor3 = Color3.new(0,0,0)
+    button.TextColor3 = Color3.new(1,1,1)
+    button.BackgroundTransparency = 0
+    button.ZIndex = 9999
+    button.ClipsDescendants = true
+    button.Active = true
+
+    -- UI Round
+    local corner = Instance.new("UICorner", button)
+    corner.CornerRadius = UDim.new(1,0)
+
+    -- Color tween loop (muda suavemente)
+    spawn(function()
+        local TweenService = game:GetService("TweenService")
+        local colors = {
+            Color3.fromRGB(0,0,0),
+            Color3.fromRGB(40,40,40),
+            Color3.fromRGB(80,0,80),
+            Color3.fromRGB(0,40,80)
+        }
+        local idx = 1
+        while task.wait(2) do
+            if button and button.Parent then
+                local nextIdx = idx % #colors + 1
+                local tweenInfo = TweenInfo.new(1.8, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, 0, true)
+                local tween = TweenService:Create(button, tweenInfo, { BackgroundColor3 = colors[nextIdx] })
+                tween:Play()
+                idx = nextIdx
+            else
+                break
+            end
+        end
+    end)
+
+    -- Dragging
+    local dragging, dragInput, dragStart, startPos
+    local function update(input)
+        local delta = input.Position - dragStart
+        button.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+    end
+
+    button.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            dragging = true
+            dragStart = input.Position
+            startPos = button.Position
+            input.Changed:Connect(function()
+                if input.UserInputState == Enum.UserInputState.End then
+                    dragging = false
+                end
+            end)
+        elseif input.UserInputType == Enum.UserInputType.Touch then
+            dragging = true
+            dragStart = input.Position
+            startPos = button.Position
+            input.Changed:Connect(function()
+                if input.UserInputState == Enum.UserInputState.End then dragging = false end
+            end)
+        end
+    end)
+
+    button.InputChanged:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+            dragInput = input
+        end
+    end)
+
+    UserInputService.InputChanged:Connect(function(input)
+        if input == dragInput and dragging then
+            update(input)
+        end
+    end)
+
+    -- Toggle UI visibility on click (pequeno debounce)
+    local debounce = false
+    button.MouseButton1Click:Connect(function()
+        if debounce then return end
+        debounce = true
+        -- mostrar/ocultar janela principal
+        local currentlyVisible = true
+        -- Fluent may expose Window:SetVisible or Window.Container; tentar várias abordagens
+        pcall(function()
+            if Window and Window.SetVisible then
+                -- alguns forks têm SetVisible
+                currentlyVisible = not Window:GetVisible() -- invertendo
+                Window:SetVisible(not Window:GetVisible())
+            elseif Window and Window.Container and Window.Container.Visible ~= nil then
+                Window.Container.Visible = not Window.Container.Visible
+                currentlyVisible = Window.Container.Visible
+            else
+                -- fallback: fechar a janela inteira (se houver função Close)
+                if Window.ToggleVisibility then
+                    Window:ToggleVisibility()
+                    currentlyVisible = true
+                end
+            end
+        end)
+        wait(0.25)
+        debounce = false
+    end)
+end
+
+-- Integrar Add-ons (igual ao original)
 SaveManager:SetLibrary(Fluent)
 InterfaceManager:SetLibrary(Fluent)
 SaveManager:IgnoreThemeSettings()
 SaveManager:SetIgnoreIndexes({})
-InterfaceManager:SetFolder("FluentScriptHub")
-SaveManager:SetFolder("FluentScriptHub/specific-game")
+InterfaceManager:SetFolder("FiatHub")
+SaveManager:SetFolder("FiatHub/specific-game")
 InterfaceManager:BuildInterfaceSection(Tabs.Settings)
 SaveManager:BuildConfigSection(Tabs.Settings)
 
 -- Selecionar aba e notificar
 Window:SelectTab(1)
 Fluent:Notify({
-    Title = "Fluent",
+    Title = "Fiat Hub",
     Content = "The script has been loaded.",
-    Duration = 8
+    Duration = 6
 })
 
-SaveManager:LoadAutoloadConfig()
+-- Carregar autoconfig (se existir)
+pcall(function()
+    SaveManager:LoadAutoloadConfig()
+end)
+
+-- Garantir desligamento da espectate caso o script/unload aconteça
+if Fluent then
+    -- se houver evento unload no Fluent
+    pcall(function()
+        if Fluent.Unloaded then
+            stopSpectate()
+        end
+    end)
+end
+
+-- FIM
