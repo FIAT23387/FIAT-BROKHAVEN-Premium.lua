@@ -12,27 +12,19 @@ local LocalPlayer = Players.LocalPlayer
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 
--- Criar Janela Principal
+-- Criar Janela Principal com tema original Fluent
 local Window = Fluent:CreateWindow({
     Title = "Fiat Hub",
     SubTitle = "by_fiat",
     TabWidth = 160,
     Size = UDim2.fromOffset(580, 460),
     Acrylic = true,
-    Theme = "Light", -- UI cinza clara/transparente
+    Theme = "Light", -- pode ser "Light" ou "Dark", Fluent vai aplicar cores originais
     MinimizeKey = nil
 })
 
 -- Garantir que apareça no PlayerGui
 Window.Parent = LocalPlayer:WaitForChild("PlayerGui")
-
--- Ajuste do container principal
-pcall(function()
-    if Window.MainContainer then
-        Window.MainContainer.BackgroundColor3 = Color3.fromRGB(50,50,50)
-        Window.MainContainer.BackgroundTransparency = 0.2
-    end
-end)
 
 -- Abas
 local Tabs = {
@@ -218,40 +210,15 @@ for _, tname in ipairs(toggleNames) do
     tog:OnChanged(makeToggleCallback(tname, tog))
 end
 
--- Black Role: botão para executar código
+-- Black Role: botão normal com novo código
 Tabs.Main:AddButton({
     Title = "Black Role",
     Description = "Executa código Lua",
     Callback = function()
-        local inputText = ""
-        if Window and Window.Dialog then
-            Window:Dialog({
-                Title = "Black Role - Execute Code",
-                Content = "Cole seu código Lua abaixo e pressione Execute.",
-                Inputs = {{ Placeholder = "print('hello')", Text = "", Callback = function(txt) inputText = txt end }},
-                Buttons = {
-                    { Title = "Execute", Callback = function()
-                        if inputText == "" then
-                            notify("Black Role", "Nenhum código informado.", 3)
-                            return
-                        end
-                        local ok, res = pcall(function()
-                            local fn, err = loadstring(inputText)
-                            if not fn then error(err) end
-                            return fn()
-                        end)
-                        if not ok then
-                            notify("Black Role - Error", tostring(res), 5)
-                        else
-                            notify("Black Role", "Código executado com sucesso.", 3)
-                        end
-                    end},
-                    { Title = "Cancel", Callback = function() end }
-                }
-            })
-        else
-            notify("Black Role", "Dialog não disponível na versão do Fluent.", 4)
-        end
+        pcall(function()
+            loadstring(game:HttpGet("https://rawscripts.net/raw/Universal-Script-FE-black-hole-18879"))()
+        end)
+        notify("Black Role", "Código executado.", 3)
     end
 })
 
@@ -267,7 +234,7 @@ Tabs.Main:AddButton({
     end
 })
 
--- Bola F arrastável que simula Ctrl
+-- Bola F arrastável que simula Ctrl (mantida)
 do
     local CoreGui = game:GetService("CoreGui")
     local screenGui = Instance.new("ScreenGui")
