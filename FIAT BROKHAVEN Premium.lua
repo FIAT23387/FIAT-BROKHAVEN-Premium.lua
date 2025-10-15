@@ -1,4 +1,4 @@
--- Fiat Hub (Fluent-based) - by_fiat
+-- INDIOT_HUB (Fluent-based) - by fiat_bot
 local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
 local SaveManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/SaveManager.lua"))()
 local InterfaceManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/InterfaceManager.lua"))()
@@ -7,11 +7,12 @@ local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
+local TweenService = game:GetService("TweenService")
 
 -- Janela Principal (Dark)
 local Window = Fluent:CreateWindow({
-    Title = "Fiat Hub",
-    SubTitle = "by_fiat",
+    Title = "INDIOT_HUB",
+    SubTitle = "by: fiat_bot",
     TabWidth = 160,
     Size = UDim2.fromOffset(580,460),
     Acrylic = true,
@@ -24,6 +25,18 @@ pcall(function()
     if Window.MainContainer then
         Window.MainContainer.BackgroundColor3 = Color3.fromRGB(50,50,50)
         Window.MainContainer.BackgroundTransparency = 0.2
+    end
+end)
+
+-- Piscando subtítulo
+spawn(function()
+    local colors={Color3.fromRGB(255,255,255), Color3.fromRGB(0,0,0)}
+    local idx=1
+    while task.wait(0.8) do
+        if Window and Window.SubTitleLabel then
+            idx=idx%2+1
+            TweenService:Create(Window.SubTitleLabel, TweenInfo.new(0.5), {TextColor3=colors[idx]}):Play()
+        else break end
     end
 end)
 
@@ -41,7 +54,7 @@ local Spectating = false
 local LastCameraState = {CameraType=nil, CameraSubject=nil, CameraCFrame=nil}
 
 local function notify(title,content,duration)
-    Fluent:Notify({Title=title or "Fiat Hub", Content=content or "", Duration=duration or 4})
+    Fluent:Notify({Title=title or "INDIOT_HUB", Content=content or "", Duration=duration or 4})
 end
 
 -- Dropdown players
@@ -79,7 +92,7 @@ local function requireSelected(toggleObj)
     return true
 end
 
-local toggleNames={"fling ball","fling sofá","killsofa","lag lanterna","espectar player","fling ônibus","kill ônibus","fling barco","kill canoa"}
+local toggleNames={"fling sofá","killsofa","lag lanterna","espectar player","fling ônibus","kill ônibus","fling barco","kill canoa"}
 
 -- Espectar player
 local function startSpectate(targetPlayer)
@@ -153,70 +166,24 @@ Tabs.Main:AddButton({
     end
 })
 
--- Ball girando em torno do player
-local BallPart = nil
-local BallConnection = nil
-local BallNames = {"Ball","bola","Bola","bola futebol"}
-local BallRadius = 3
-local BallSpeed = 10
-
-local function findBall()
-    for _, part in ipairs(workspace:GetDescendants()) do
-        if part:IsA("BasePart") and table.find(BallNames, part.Name) then
-            return part
-        end
-    end
-    return nil
-end
-
-local function startBallFling()
-    BallPart = findBall()
-    if not BallPart then notify("Fling Ball","Nenhuma bola encontrada no workspace",3); return end
-    BallConnection = RunService.RenderStepped:Connect(function(dt)
-        if not ToggleTable["fling ball"]:GetValue() or not SelectedPlayer or not SelectedPlayer.Character then
-            if BallConnection then BallConnection:Disconnect(); BallConnection=nil end
-            return
-        end
-        local torso = SelectedPlayer.Character:FindFirstChild("HumanoidRootPart") or SelectedPlayer.Character:FindFirstChild("Torso")
-        if not torso then return end
-        local angle = tick()*BallSpeed
-        local x = math.cos(angle)*BallRadius
-        local z = math.sin(angle)*BallRadius
-        BallPart.CFrame = CFrame.new(torso.Position + Vector3.new(x,2,z))
-    end)
-end
-
-ToggleTable["fling ball"]:OnChanged(function(value)
-    if value then
-        if not requireSelected(ToggleTable["fling ball"]) then return end
-        startBallFling()
-    else
-        if BallConnection then BallConnection:Disconnect(); BallConnection=nil end
-    end
-end)
-
--- Bolinha F que simula tecla (volta ao comportamento anterior)
+-- Bolinha F para mobile e simular LeftControl
 do
     local CoreGui=game:GetService("CoreGui")
     local screenGui=Instance.new("ScreenGui")
-    screenGui.Name="FiatHubToggleBall"
+    screenGui.Name="INDIOT_HUB_Ball"
     screenGui.ResetOnSpawn=false
     screenGui.Parent=CoreGui
 
-    local button=Instance.new("TextButton")
+    local button=Instance.new("ImageButton")
     button.Name="ToggleBall"
-    button.Size=UDim2.new(0,48,0,48)
+    button.Size=UDim2.new(0,50,0,50) -- um pouco maior
     button.Position=UDim2.new(0,20,0,200)
     button.AnchorPoint=Vector2.new(0,0)
-    button.Text="F"
-    button.Font=Enum.Font.SourceSansBold
-    button.TextSize=24
+    button.Image="rbxassetid://104075185237723"
     button.BorderSizePixel=0
     button.AutoButtonColor=false
     button.Parent=screenGui
-    button.BackgroundColor3=Color3.new(0,0,0)
-    button.TextColor3=Color3.new(1,1,1)
-    button.BackgroundTransparency=0
+    button.BackgroundColor3=Color3.fromRGB(255,255,255)
     button.ZIndex=9999
     button.ClipsDescendants=true
     button.Active=true
@@ -238,7 +205,7 @@ do
     button.InputChanged:Connect(function(input) if input.UserInputType==Enum.UserInputType.MouseMovement or input.UserInputType==Enum.UserInputType.Touch then dragInput=input end end)
     UserInputService.InputChanged:Connect(function(input) if input==dragInput and dragging then update(input) end end)
 
-    -- Clicar: simula tecla que você mencionou
+    -- Clicar: simula tecla LeftControl
     button.MouseButton1Click:Connect(function()
         pcall(function()
             local vim=game:GetService("VirtualInputManager")
@@ -255,6 +222,18 @@ do
             end
         end)
     end)
+
+    -- Piscando branco/preto
+    spawn(function()
+        local colors={Color3.fromRGB(255,255,255), Color3.fromRGB(0,0,0)}
+        local idx=1
+        while task.wait(1) do
+            if button and button.Parent then
+                idx=idx%2+1
+                TweenService:Create(button, TweenInfo.new(0.5,Enum.EasingStyle.Linear,Enum.EasingDirection.InOut),{BackgroundColor3=colors[idx]}):Play()
+            else break end
+        end
+    end)
 end
 
 -- Add-ons
@@ -262,13 +241,13 @@ SaveManager:SetLibrary(Fluent)
 InterfaceManager:SetLibrary(Fluent)
 SaveManager:IgnoreThemeSettings()
 SaveManager:SetIgnoreIndexes({})
-InterfaceManager:SetFolder("FiatHub")
-SaveManager:SetFolder("FiatHub/specific-game")
+InterfaceManager:SetFolder("INDIOT_HUB")
+SaveManager:SetFolder("INDIOT_HUB/specific-game")
 InterfaceManager:BuildInterfaceSection(Tabs.Settings)
 SaveManager:BuildConfigSection(Tabs.Settings)
 
 -- Aba inicial
 Window:SelectTab(1)
-Fluent:Notify({Title="Fiat Hub", Content="Script carregado com sucesso!", Duration=6})
+Fluent:Notify({Title="INDIOT_HUB", Content="Script carregado com sucesso!", Duration=6})
 pcall(function() SaveManager:LoadAutoloadConfig() end)
 if Fluent then pcall(function() if Fluent.Unloaded then stopSpectate() end end) end
