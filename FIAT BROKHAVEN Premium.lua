@@ -1,4 +1,4 @@
--- Fiat Hub (Fluent-based) - Atualizado by_fiat
+-- INDIOT_HUB (Fluent-based) - by fiat_bot
 local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
 local SaveManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/SaveManager.lua"))()
 local InterfaceManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/InterfaceManager.lua"))()
@@ -7,11 +7,12 @@ local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
+local TweenService = game:GetService("TweenService")
 
 -- Janela Principal (Dark)
 local Window = Fluent:CreateWindow({
-    Title = "Fiat Hub",
-    SubTitle = "by_fiat",
+    Title = "INDIOT_HUB",
+    SubTitle = "by: fiat_bot",
     TabWidth = 160,
     Size = UDim2.fromOffset(580,460),
     Acrylic = true,
@@ -27,19 +28,36 @@ pcall(function()
     end
 end)
 
+-- Piscando subtÃ­tulo
+spawn(function()
+    local colors={Color3.fromRGB(255,255,255), Color3.fromRGB(0,0,0)}
+    local idx=1
+    while task.wait(0.8) do
+        if Window and Window.SubTitleLabel then
+            idx=idx%2+1
+            TweenService:Create(Window.SubTitleLabel, TweenInfo.new(0.5), {TextColor3=colors[idx]}):Play()
+        else break end
+    end
+end)
+
 -- Abas
 local Tabs = {
-    Farm = Window:AddTab({Title="Farm", Icon=""}),
+    Main = Window:AddTab({Title="Main", Icon=""}),
     Settings = Window:AddTab({Title="Settings", Icon="settings"})
 }
 
--- Notificações
+local SelectedPlayer = nil
+local PlayerDropdown = nil
+local ToggleTable = {}
+local SpectateConnection = nil
+local Spectating = false
+local LastCameraState = {CameraType=nil, CameraSubject=nil, CameraCFrame=nil}
+
 local function notify(title,content,duration)
-    Fluent:Notify({Title=title or "Fiat Hub", Content=content or "", Duration=duration or 4})
+    Fluent:Notify({Title=title or "INDIOT_HUB", Content=content or "", Duration=duration or 4})
 end
 
 -- Dropdown players
-local SelectedPlayer = nil
 local function buildPlayerValueList()
     local list = {}
     for _,p in ipairs(Players:GetPlayers()) do
@@ -51,214 +69,185 @@ local function setSelectedPlayerByName(name)
     if not name or name=="" then SelectedPlayer=nil; notify("Player","Nenhum player selecionado",3); return end
     local p = Players:FindFirstChild(name)
     if p then SelectedPlayer=p; notify("Player","Selecionado: "..p.Name,3)
-    else SelectedPlayer=nil; notify("Player","Player não encontrado: "..tostring(name),3) end
+    else SelectedPlayer=nil; notify("Player","Player nÃ£o encontrado: "..tostring(name),3) end
 end
 
--- ToggleTable
-local ToggleTable = {}
+PlayerDropdown = Tabs.Main:AddDropdown("PlayerDropdown",{Title="Select Player", Values=buildPlayerValueList(), Multi=false, Default=1})
+local initialValues = buildPlayerValueList()
+if #initialValues>0 then PlayerDropdown:SetValue(initialValues[1]); setSelectedPlayerByName(initialValues[1]) end
+PlayerDropdown:OnChanged(setSelectedPlayerByName)
 
--- ===============================
--- 🟢 DROPDOWN FAST ATTACK SPEED
--- ===============================
-local FastAttackSpeed = 0.8 -- Default
-local FastAttackDropdown = Tabs.Farm:AddDropdown("FastAttackSpeedDropdown",{
-    Title="Fast Attack Speed",
-    Values={"0.1⚠️","0.3⚠️","0.4⚠️","0.8⚠️","2✅ recomendo"},
-    Multi=false,
-    Default=4
-})
-FastAttackDropdown:OnChanged(function(value)
-    local num = tonumber(value:match("%d+%.?%d*"))
-    if num then FastAttackSpeed = num end
-    notify("Fast Attack","Velocidade ajustada para "..FastAttackSpeed,3)
+Players.PlayerAdded:Connect(function(plr) PlayerDropdown:SetValues(buildPlayerValueList()) end)
+Players.PlayerRemoving:Connect(function(plr)
+    PlayerDropdown:SetValues(buildPlayerValueList())
+    if SelectedPlayer and SelectedPlayer.Name==plr.Name then SelectedPlayer=nil; notify("Player","Player saiu: "..plr.Name,3) end
 end)
 
--- ===============================
--- 🟢 AUTO FARM LOGIC
--- ===============================
-local AutoFarmActive = false
-local BringMobsActive = false
+local function requireSelected(toggleObj)
+    if not SelectedPlayer then
+        notify("Erro","VocÃª precisa selecionar um player primeiro.",3)
+        if toggleObj and toggleObj.SetValue then pcall(function() toggleObj:SetValue(false) end) end
+        return false
+    end
+    return true
+end
 
--- Config
-local FarmStages = {
-    {Level=0, Position=Vector3.new(-4934,313,-2788)},
-    {Level=50, Position=Vector3.new(-4672,876,-1971)},
-}
-local CurrentStageIndex = 1
+local toggleNames={"fling sofÃ¡","killsofa","lag lanterna","espectar player","fling Ã´nibus","kill Ã´nibus","fling barco","kill canoa"}
 
--- Função util para puxar mobs
-local function PullMobs()
-    if not BringMobsActive then return end
-    local pos = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") and LocalPlayer.Character.HumanoidRootPart.Position
-    if not pos then return end
-    for _, mob in ipairs(workspace:GetDescendants()) do
-        if mob:IsA("Model") and mob:FindFirstChild("Humanoid") and mob.Name=="Sky Bandit" then
-            if mob:FindFirstChild("HumanoidRootPart") then
-                mob:FindFirstChild("HumanoidRootPart").CFrame = CFrame.new(pos - Vector3.new(0,20,0))
-                -- Aumentar hitbox
-                if mob.HumanoidRootPart.Size.X < 200 then
-                    mob.HumanoidRootPart.Size = Vector3.new(200,200,200)
-                end
-            end
-        end
+-- Espectar player
+local function startSpectate(targetPlayer)
+    if not targetPlayer or not targetPlayer.Character then return end
+    local hrp = targetPlayer.Character:FindFirstChild("HumanoidRootPart") or targetPlayer.Character:FindFirstChild("Torso")
+    if not hrp then return end
+    local cam = workspace.CurrentCamera
+    LastCameraState.CameraType=cam.CameraType
+    LastCameraState.CameraSubject=cam.CameraSubject
+    LastCameraState.CameraCFrame=cam.CFrame
+    cam.CameraType=Enum.CameraType.Scriptable
+    Spectating=true
+    SpectateConnection=RunService.RenderStepped:Connect(function()
+        if not Spectating then return end
+        if not targetPlayer or not targetPlayer.Character or not hrp.Parent then stopSpectate(); notify("Espectar","Player saiu/morto. Parando espectar.",3); return end
+        local targetCFrame=CFrame.new(hrp.Position+Vector3.new(0,2,8), hrp.Position)
+        cam.CFrame=cam.CFrame:Lerp(targetCFrame,0.25)
+    end)
+end
+local function stopSpectate()
+    Spectating=false
+    if SpectateConnection then SpectateConnection:Disconnect(); SpectateConnection=nil end
+    local cam=workspace.CurrentCamera
+    if cam then
+        cam.CameraType=LastCameraState.CameraType or Enum.CameraType.Custom
+        cam.CameraSubject=LastCameraState.CameraSubject or LocalPlayer.Character:FindFirstChildWhichIsA("Humanoid")
+        if LastCameraState.CameraCFrame then cam.CFrame=LastCameraState.CameraCFrame end
     end
 end
 
--- Função levitar
-local function LevitateAt(position)
-    local char = LocalPlayer.Character
-    if not char or not char:FindFirstChild("HumanoidRootPart") then return end
-    char.HumanoidRootPart.Anchored = true
-    char.HumanoidRootPart.CFrame = CFrame.new(position)
+local function makeToggleCallback(name,toggleObj)
+    return function(value)
+        if name=="espectar player" then
+            if value then if not requireSelected(toggleObj) then return end; startSpectate(SelectedPlayer) else stopSpectate() end
+            return
+        end
+        if not requireSelected(toggleObj) then return end
+        if value then notify("Action",name.." ativado para "..(SelectedPlayer and SelectedPlayer.Name or "N/A"),4)
+        else notify("Action",name.." desativado",3) end
+    end
 end
 
--- Função apertar tecla 1
-local function PressKey1Once()
-    pcall(function()
-        local vim = game:GetService("VirtualInputManager")
-        if vim and vim.SendKeyEvent then
-            vim:SendKeyEvent(true, Enum.KeyCode.One, false, game)
-            task.wait(0.05)
-            vim:SendKeyEvent(false, Enum.KeyCode.One, false, game)
+for _,tname in ipairs(toggleNames) do
+    local id=tname:gsub("%s","_")
+    local tog=Tabs.Main:AddToggle(id,{Title=tname,Default=false})
+    ToggleTable[tname]=tog
+    tog:OnChanged(makeToggleCallback(tname,tog))
+end
+
+-- Black Role
+Tabs.Main:AddButton({
+    Title="Black Role",
+    Description="Executa cÃ³digo Lua",
+    Callback=function()
+        pcall(function()
+            loadstring(game:HttpGet("https://rawscripts.net/raw/Universal-Script-FE-black-hole-18879"))()
+        end)
+        notify("Black Role","CÃ³digo executado.",3)
+    end
+})
+
+-- Brookhaven Audio
+Tabs.Main:AddButton({
+    Title="Brookhaven Audio",
+    Description="Executa cÃ³digo de Ã¡udio",
+    Callback=function()
+        pcall(function()
+            loadstring(game:HttpGet("https://raw.githubusercontent.com/nmalka01/nmalka01/refs/heads/main/Brookhaven_audio"))()
+        end)
+        notify("Brookhaven Audio","CÃ³digo executado.",3)
+    end
+})
+
+-- Bolinha F para mobile e simular LeftControl
+do
+    local CoreGui=game:GetService("CoreGui")
+    local screenGui=Instance.new("ScreenGui")
+    screenGui.Name="INDIOT_HUB_Ball"
+    screenGui.ResetOnSpawn=false
+    screenGui.Parent=CoreGui
+
+    local button=Instance.new("ImageButton")
+    button.Name="ToggleBall"
+    button.Size=UDim2.new(0,50,0,50) -- um pouco maior
+    button.Position=UDim2.new(0,20,0,200)
+    button.AnchorPoint=Vector2.new(0,0)
+    button.Image="rbxassetid://104075185237723"
+    button.BorderSizePixel=0
+    button.AutoButtonColor=false
+    button.Parent=screenGui
+    button.BackgroundColor3=Color3.fromRGB(255,255,255)
+    button.ZIndex=9999
+    button.ClipsDescendants=true
+    button.Active=true
+    local corner=Instance.new("UICorner",button)
+    corner.CornerRadius=UDim.new(1,0)
+
+    -- Drag
+    local dragging,dragInput,dragStart,startPos
+    local function update(input)
+        local delta=input.Position-dragStart
+        button.Position=UDim2.new(startPos.X.Scale,startPos.X.Offset+delta.X,startPos.Y.Scale,startPos.Y.Offset+delta.Y)
+    end
+    button.InputBegan:Connect(function(input)
+        if input.UserInputType==Enum.UserInputType.MouseButton1 or input.UserInputType==Enum.UserInputType.Touch then
+            dragging=true; dragStart=input.Position; startPos=button.Position
+            input.Changed:Connect(function() if input.UserInputState==Enum.UserInputState.End then dragging=false end end)
+        end
+    end)
+    button.InputChanged:Connect(function(input) if input.UserInputType==Enum.UserInputType.MouseMovement or input.UserInputType==Enum.UserInputType.Touch then dragInput=input end end)
+    UserInputService.InputChanged:Connect(function(input) if input==dragInput and dragging then update(input) end end)
+
+    -- Clicar: simula tecla LeftControl
+    button.MouseButton1Click:Connect(function()
+        pcall(function()
+            local vim=game:GetService("VirtualInputManager")
+            if vim and vim.SendKeyEvent then
+                vim:SendKeyEvent(true, Enum.KeyCode.LeftControl, false, game)
+                task.wait(0.06)
+                vim:SendKeyEvent(false, Enum.KeyCode.LeftControl, false, game)
+            else
+                local vu=game:GetService("VirtualUser")
+                vu:CaptureController()
+                UserInputService.InputBegan:Fire({UserInputType=Enum.UserInputType.Keyboard,KeyCode=Enum.KeyCode.LeftControl},false)
+                task.wait(0.06)
+                UserInputService.InputEnded:Fire({UserInputType=Enum.UserInputType.Keyboard,KeyCode=Enum.KeyCode.LeftControl},false)
+            end
+        end)
+    end)
+
+    -- Piscando branco/preto
+    spawn(function()
+        local colors={Color3.fromRGB(255,255,255), Color3.fromRGB(0,0,0)}
+        local idx=1
+        while task.wait(1) do
+            if button and button.Parent then
+                idx=idx%2+1
+                TweenService:Create(button, TweenInfo.new(0.5,Enum.EasingStyle.Linear,Enum.EasingDirection.InOut),{BackgroundColor3=colors[idx]}):Play()
+            else break end
         end
     end)
 end
 
--- Auto Farm loop
-task.spawn(function()
-    while task.wait(1) do
-        if AutoFarmActive then
-            -- Determinar stage conforme level
-            local plrLevel = LocalPlayer:FindFirstChild("leaderstats") and LocalPlayer.leaderstats:FindFirstChild("Level") and LocalPlayer.leaderstats.Level.Value or 0
-            if CurrentStageIndex < #FarmStages and plrLevel >= FarmStages[CurrentStageIndex+1].Level then
-                CurrentStageIndex = CurrentStageIndex + 1
-            end
-            local stagePos = FarmStages[CurrentStageIndex].Position
-            LevitateAt(stagePos)
-            PullMobs()
-            PressKey1Once()
-            -- Espera mobs morrerem (simplificado: espera 60s)
-            task.wait(60)
-        end
-    end
-end)
-
--- ===============================
--- 🟢 TOGGLES FARM
--- ===============================
--- Auto Farm
-ToggleTable["AutoFarm"] = Tabs.Farm:AddToggle("AutoFarmToggle",{Title="Auto Farm Level Beta ⚠️",Default=false})
-ToggleTable["AutoFarm"]:OnChanged(function(value)
-    AutoFarmActive = value
-    if value then
-        notify("Auto Farm","Auto Farm ativado!",3)
-    else
-        notify("Auto Farm","Auto Farm desativado!",3)
-    end
-end)
-
--- Bring Mobs
-ToggleTable["BringMobs"] = Tabs.Farm:AddToggle("BringMobsToggle",{Title="Bring Mob ⚠️",Default=false})
-ToggleTable["BringMobs"]:OnChanged(function(value)
-    if not AutoFarmActive and value then
-        notify("Bring Mobs","Ative Auto Farm primeiro!",3)
-        ToggleTable["BringMobs"]:SetValue(false)
-        return
-    end
-    BringMobsActive = value
-end)
-
--- Fast Attack
-ToggleTable["FastAttack"] = Tabs.Farm:AddToggle("FastAttackToggle",{Title="Fast Attack ⚠️",Default=false})
-ToggleTable["FastAttack"]:OnChanged(function(value)
-    if value then
-        notify("Fast Attack","Ativado!",3)
-        task.spawn(function()
-            local SuperFastMode = true
-            local plr = LocalPlayer
-            local CbFw = debug.getupvalues(require(plr.PlayerScripts.CombatFramework))
-            local CbFw2 = CbFw[2]
-
-            function GetCurrentBlade()
-                local p13 = CbFw2.activeController
-                local ret = p13.blades[1]
-                if not ret then return end
-                while ret.Parent ~= plr.Character do ret = ret.Parent end
-                return ret
-            end
-
-            function AttackNoCD()
-                local AC = CbFw2.activeController
-                for i = 1, 1 do
-                    local bladehit = require(game.ReplicatedStorage.CombatFramework.RigLib).getBladeHits(
-                        plr.Character,
-                        {plr.Character.HumanoidRootPart},
-                        60
-                    )
-                    local cac = {}
-                    local hash = {}
-                    for k, v in pairs(bladehit) do
-                        if v.Parent:FindFirstChild("HumanoidRootPart") and not hash[v.Parent] then
-                            table.insert(cac, v.Parent.HumanoidRootPart)
-                            hash[v.Parent] = true
-                        end
-                    end
-                    bladehit = cac
-                    if #bladehit > 0 then
-                        local u8 = debug.getupvalue(AC.attack, 5)
-                        local u9 = debug.getupvalue(AC.attack, 6)
-                        local u7 = debug.getupvalue(AC.attack, 4)
-                        local u10 = debug.getupvalue(AC.attack, 7)
-                        local u12 = (u8 * 798405 + u7 * 727595) % u9
-                        local u13 = u7 * 798405
-                        (function()
-                            u12 = (u12 * u9 + u13) % 1099511627776
-                            u8 = math.floor(u12 / u9)
-                            u7 = u12 - u8 * u9
-                        end)()
-                        u10 = u10 + 1
-                        debug.setupvalue(AC.attack, 5, u8)
-                        debug.setupvalue(AC.attack, 6, u9)
-                        debug.setupvalue(AC.attack, 4, u7)
-                        debug.setupvalue(AC.attack, 7, u10)
-                        pcall(function()
-                            for k, v in pairs(AC.animator.anims.basic) do
-                                v:Play()
-                            end
-                        end)
-                        if plr.Character:FindFirstChildOfClass("Tool") and AC.blades and AC.blades[1] then
-                            game:GetService("ReplicatedStorage").RigControllerEvent:FireServer("weaponChange",tostring(GetCurrentBlade()))
-                            game.ReplicatedStorage.Remotes.Validator:FireServer(math.floor(u12 / 1099511627776 * 16777215), u10)
-                            game:GetService("ReplicatedStorage").RigControllerEvent:FireServer("hit", bladehit, i, "")
-                        end
-                    end
-                end
-            end
-
-            local waitFunc = SuperFastMode and task.wait or wait
-            while ToggleTable["FastAttack"]:GetValue() do
-                AttackNoCD()
-                waitFunc(FastAttackSpeed)
-            end
-        end)
-    else
-        notify("Fast Attack","Desativado!",3)
-    end
-end)
-
--- ===============================
--- Add-ons Fluent
--- ===============================
+-- Add-ons
 SaveManager:SetLibrary(Fluent)
 InterfaceManager:SetLibrary(Fluent)
 SaveManager:IgnoreThemeSettings()
 SaveManager:SetIgnoreIndexes({})
-InterfaceManager:SetFolder("FiatHub")
-SaveManager:SetFolder("FiatHub/specific-game")
+InterfaceManager:SetFolder("INDIOT_HUB")
+SaveManager:SetFolder("INDIOT_HUB/specific-game")
 InterfaceManager:BuildInterfaceSection(Tabs.Settings)
 SaveManager:BuildConfigSection(Tabs.Settings)
 
 -- Aba inicial
 Window:SelectTab(1)
-Fluent:Notify({Title="Fiat Hub", Content="Script carregado com sucesso!", Duration=6})
+Fluent:Notify({Title="INDIOT_HUB", Content="Script carregado com sucesso!", Duration=6})
 pcall(function() SaveManager:LoadAutoloadConfig() end)
+if Fluent then pcall(function() if Fluent.Unloaded then stopSpectate() end end) end        
